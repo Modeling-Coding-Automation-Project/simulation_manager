@@ -107,6 +107,26 @@ class SimulationPlotter:
                          column, row, x_sequence,
                          x_sequence_name, line_style, label))
 
+    def assign_all(self, signal_name, position,
+                   x_sequence=None,
+                   line_style="-", label=""):
+
+        col_size = eval(
+            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[0]")
+        row_size = eval(
+            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[1]")
+
+        if label == "":
+            label = signal_name
+
+        for i in range(col_size):
+            for j in range(row_size):
+                label_text = label + "_" + str(i) + "_" + str(j)
+                self.assign(signal_name, position=position,
+                            column=i, row=j,
+                            x_sequence=x_sequence,
+                            line_style=line_style, label=label_text)
+
     def pre_plot(self, suptitle=""):
 
         subplots_signals_list = self.configuration.subplots_signals_list
