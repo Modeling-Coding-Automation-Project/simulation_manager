@@ -7,7 +7,9 @@ import inspect
 class SubplotsInfo:
     def __init__(self, signal_name, shape,
                  column, row, x_sequence,
-                 x_sequence_name, line_style, label):
+                 x_sequence_name, line_style,
+                 marker, label):
+
         self.signal_name = signal_name
         self.shape = shape
         self.column = column
@@ -18,6 +20,7 @@ class SubplotsInfo:
 
         self.line_style = line_style
         self.label = label
+        self.marker = marker
 
 
 class Configuration:
@@ -79,7 +82,7 @@ class SimulationPlotter:
 
     def assign(self, signal_name, position,
                column=0, row=0, x_sequence=None,
-               line_style="-", label=""):
+               line_style="-", marker="", label=""):
 
         x_sequence_name = ""
         if x_sequence is not None:
@@ -105,11 +108,12 @@ class SimulationPlotter:
         self.configuration.subplots_signals_list.append(
             SubplotsInfo(signal_name, shape,
                          column, row, x_sequence,
-                         x_sequence_name, line_style, label))
+                         x_sequence_name, line_style,
+                         marker, label))
 
     def assign_all(self, signal_name, position,
                    x_sequence=None,
-                   line_style="-", label=""):
+                   line_style="-", marker="", label=""):
 
         col_size = eval(
             f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[0]")
@@ -125,7 +129,8 @@ class SimulationPlotter:
                 self.assign(signal_name, position=position,
                             column=i, row=j,
                             x_sequence=x_sequence,
-                            line_style=line_style, label=label_text)
+                            line_style=line_style, marker=marker,
+                            label=label_text)
 
     def pre_plot(self, suptitle=""):
 
@@ -191,7 +196,7 @@ class SimulationPlotter:
 
             ax.plot(x_sequence_signal, signal,
                     label=label_name,
-                    linestyle=signal_info.line_style)
+                    linestyle=signal_info.line_style, marker=signal_info.marker)
             mplcursors.cursor(ax)
             ax.legend()
             ax.set_xlabel(signal_info.x_sequence_name)
