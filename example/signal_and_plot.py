@@ -18,24 +18,21 @@ input_points = np.array([
     [10, 0]
 ], dtype=np.float64)
 
-input_signal = Sampler.create_periodical(
+time, input_signal = Sampler.create_periodical(
     input_points,
-    start_time=0,
-    end_time=10,
+    start_time=0.0,
+    end_time=10.0,
     sampling_interval=0.1
 )
-
-time = input_signal[:, 0]
-value = input_signal[:, 1]
 
 
 # plot the signal
 plotter = SimulationPlotter()
 
-plotter.append_sequence(value)
+plotter.append_sequence(input_signal)
 
-plotter.assign("value", column=0, row=0, position=(0, 0),
-               x_sequence=time, label="value", line_style="--",
+plotter.assign("input_signal", column=0, row=0, position=(0, 0),
+               x_sequence=time, label="input_signal", line_style="--",
                marker='.')
 
 plotter.plot("signal")

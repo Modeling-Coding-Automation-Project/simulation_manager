@@ -40,4 +40,4 @@ class Sampler:
 
         sample_times = sample_times.reshape(-1, 1)
 
-        return np.hstack((sample_times, sampled_values))
+        return sample_times, sampled_values
