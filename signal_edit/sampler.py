@@ -36,6 +36,8 @@ class Sampler:
                                kind='linear', fill_value='extrapolate')
 
         sample_times = np.arange(start_time, end_time, sampling_interval)
+        sample_times = np.append(sample_times, end_time)
+
         sampled_values = interp_func(sample_times).reshape(-1, 1)
 
         sample_times = sample_times.reshape(-1, 1)
