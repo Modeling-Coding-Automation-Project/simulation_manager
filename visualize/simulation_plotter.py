@@ -24,14 +24,15 @@ class SubplotsInfo:
 
 
 class Configuration:
-    subplots_shape = np.zeros((2, 1), dtype=int)
-    subplots_signals_list = []
+    def __init__(self):
+        self.subplots_shape = np.zeros((2, 1), dtype=int)
+        self.subplots_signals_list = []
 
-    window_width_base = 6
-    window_height_base = 4
+        self.window_width_base = 6
+        self.window_height_base = 4
 
-    window_width_each_subplot = 4
-    window_height_each_subplot = 2
+        self.window_width_each_subplot = 4
+        self.window_height_each_subplot = 2
 
 
 class SimulationPlotter:
