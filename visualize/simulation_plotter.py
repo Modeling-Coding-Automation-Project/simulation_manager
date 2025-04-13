@@ -59,6 +59,12 @@ class SimulationPlotter:
         else:
             self.name_to_object_dictionary[object_name] = [signal_object]
 
+    def append_name(self, signal_object, object_name):
+        if object_name in self.name_to_object_dictionary:
+            self.name_to_object_dictionary[object_name].append(signal_object)
+        else:
+            self.name_to_object_dictionary[object_name] = [signal_object]
+
     def append_sequence(self, signal_sequence_object):
         # %% inspect arguments
         # Get the caller's frame
@@ -73,6 +79,15 @@ class SimulationPlotter:
                 break
 
             # %% append object
+        for i in range(len(signal_sequence_object)):
+            if object_name in self.name_to_object_dictionary:
+                self.name_to_object_dictionary[object_name].append(
+                    signal_sequence_object[i].reshape(-1, 1))
+            else:
+                self.name_to_object_dictionary[object_name] = [
+                    signal_sequence_object[i].reshape(-1, 1)]
+
+    def append_sequence_name(self, signal_sequence_object, object_name):
         for i in range(len(signal_sequence_object)):
             if object_name in self.name_to_object_dictionary:
                 self.name_to_object_dictionary[object_name].append(

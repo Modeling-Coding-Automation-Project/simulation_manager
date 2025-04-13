@@ -29,7 +29,7 @@ time, input_signal = Sampler.create_periodical(
 # plot the signal
 plotter = SimulationPlotter()
 
-plotter.append_sequence(input_signal)
+plotter.append_sequence_name(input_signal, "input_signal")
 
 plotter.assign("input_signal", column=0, row=0, position=(0, 0),
                x_sequence=time, label="input_signal", line_style="--",
