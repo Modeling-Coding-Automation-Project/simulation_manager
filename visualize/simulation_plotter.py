@@ -97,25 +97,27 @@ class SimulationPlotter:
                     signal_sequence_object[i].reshape(-1, 1)]
 
     def assign(self, signal_name, position,
-               column=0, row=0, x_sequence=None,
+               column=0, row=0, x_sequence=None, x_sequence_name=None,
                line_style="-", marker="", label=""):
 
-        x_sequence_name = ""
-        if x_sequence is not None:
+        this_x_sequence_name = ""
+        if (x_sequence is not None) and (x_sequence_name is None):
             # %% inspect arguments
             # Get the caller's frame
             frame = inspect.currentframe().f_back
             # Get the caller's local variables
             caller_locals = frame.f_locals
             # Find the object_name that matches the matrix_in value
-            x_sequence_name = None
+            this_x_sequence_name = None
             for name, value in caller_locals.items():
                 if value is x_sequence:
-                    x_sequence_name = name
+                    this_x_sequence_name = name
                     break
+        else:
+            this_x_sequence_name = x_sequence_name
 
         if (x_sequence is not None) and isinstance(x_sequence, str):
-            x_sequence_name = x_sequence
+            this_x_sequence_name = x_sequence
             x_sequence = self.name_to_object_dictionary[x_sequence]
 
         # %% assign object
@@ -124,12 +126,28 @@ class SimulationPlotter:
         self.configuration.subplots_signals_list.append(
             SubplotsInfo(signal_name, shape,
                          column, row, x_sequence,
-                         x_sequence_name, line_style,
+                         this_x_sequence_name, line_style,
                          marker, label))
 
     def assign_all(self, signal_name, position,
-                   x_sequence=None,
+                   x_sequence=None, x_sequence_name=None,
                    line_style="-", marker="", label=""):
+
+        this_x_sequence_name = ""
+        if (x_sequence is not None) and (x_sequence_name is None):
+            # %% inspect arguments
+            # Get the caller's frame
+            frame = inspect.currentframe().f_back
+            # Get the caller's local variables
+            caller_locals = frame.f_locals
+            # Find the object_name that matches the matrix_in value
+            this_x_sequence_name = None
+            for name, value in caller_locals.items():
+                if value is x_sequence:
+                    this_x_sequence_name = name
+                    break
+        else:
+            this_x_sequence_name = x_sequence_name
 
         col_size = eval(
             f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[0]")
@@ -145,6 +163,7 @@ class SimulationPlotter:
                 self.assign(signal_name, position=position,
                             column=i, row=j,
                             x_sequence=x_sequence,
+                            x_sequence_name=this_x_sequence_name,
                             line_style=line_style, marker=marker,
                             label=label_text)
 
