@@ -1,3 +1,9 @@
+"""
+This script demonstrates the generation and visualization of
+ a pulse signal using custom signal processing and plotting utilities.
+It creates a pulse input signal with specified parameters,
+ then visualizes the signal using a simulation plotter.
+"""
 import os
 import sys
 sys.path.append(os.getcwd())
