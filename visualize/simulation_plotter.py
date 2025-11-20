@@ -504,7 +504,7 @@ class SimulationPlotter:
                     f"Cursor1: x={cx:.3f}, y={cy:.3f}",
                     transform=ax.transAxes,
                     color="red",
-                    fontsize=10,
+                    fontsize=8,
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
                 )
 
@@ -518,11 +518,11 @@ class SimulationPlotter:
                 cursor_info['cursor2'] = ax.axvline(
                     cx, color="blue", linestyle="--", linewidth=1.2)
                 cursor_info['text2'] = ax.text(
-                    0.02, 0.90,
+                    0.02, 0.85,
                     f"Cursor2: x={cx:.3f}, y={cy:.3f}",
                     transform=ax.transAxes,
                     color="blue",
-                    fontsize=10,
+                    fontsize=8,
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
                 )
 
@@ -535,11 +535,11 @@ class SimulationPlotter:
                     cursor_info['text_diff'].remove()
 
                 cursor_info['text_diff'] = ax.text(
-                    0.02, 0.85,
+                    0.02, 0.75,
                     f"Δx = {diff:.3f}",
                     transform=ax.transAxes,
                     color="black",
-                    fontsize=11,
+                    fontsize=8,
                     fontweight="bold",
                     bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8)
                 )
