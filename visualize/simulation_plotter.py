@@ -341,12 +341,12 @@ class SimulationPlotter:
 
         figure_size = (self.configuration.window_width_base +
                        self.configuration.window_width_each_subplot *
-                       (shape[1, 0] - 1) + 2,  # チェックボックス用スペース追加
+                       (shape[1, 0] - 1) + 2,
                        self.configuration.window_height_base +
                        self.configuration.window_height_each_subplot * (shape[0, 0] - 1))
 
         fig, axs = plt.subplots(shape[0, 0], shape[1, 0], figsize=figure_size)
-        plt.subplots_adjust(right=0.85)  # チェックボックス用スペース
+        plt.subplots_adjust(right=0.85)
         fig.suptitle(suptitle)
 
         self.subplot_cursors = {}
@@ -414,11 +414,13 @@ class SimulationPlotter:
             ax.set_xlabel(signal_info.x_sequence_name)
             ax.grid(True)
 
-        check_ax = plt.axes([0.0, 0.0, 0.1, 0.1])
+        check_ax = plt.axes([0.0, 0.0, 0.05, 0.05])
         check = CheckButtons(check_ax, ["Dual cursor\nmode"], [False])
 
         def clear_dual_cursors(subplot_key):
-            """指定されたサブプロットの2本カーソルを消す"""
+            """
+            Deletes dual cursors and associated texts from the specified subplot.
+            """
             cursor_info = self.subplot_cursors[subplot_key]
             if cursor_info['cursor1'] is not None:
                 cursor_info['cursor1'].remove()
@@ -437,13 +439,17 @@ class SimulationPlotter:
                 cursor_info['text_diff'] = None
 
         def clear_mplcursors(subplot_key):
-            """指定されたサブプロットのmplcursorsを消す"""
+            """
+            Deletes all mplcursor selections from the specified subplot.
+            """
             cursor_info = self.subplot_cursors[subplot_key]
             for sel in list(cursor_info['cursor_mpl'].selections):
                 cursor_info['cursor_mpl'].remove_selection(sel)
 
         def toggle_mode(label):
-            """チェックボックスがクリックされたときの処理"""
+            """
+            Handles the event when the checkbox is clicked.
+            """
             self.configuration.dual_cursor_mode = check.get_status()[0]
 
             for subplot_key, cursor_info in self.subplot_cursors.items():
@@ -458,7 +464,9 @@ class SimulationPlotter:
             fig.canvas.draw_idle()
 
         def on_click(event):
-            """クリックイベント処理"""
+            """
+            Handles the click event.
+            """
             if not self.configuration.dual_cursor_mode:
                 return
 
