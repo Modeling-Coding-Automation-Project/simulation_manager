@@ -16,6 +16,7 @@ Classes:
          and generate plots with customizable appearance and layout.
 """
 import matplotlib.pyplot as plt
+from matplotlib.widgets import CheckButtons
 import mplcursors
 import numpy as np
 import inspect
@@ -51,12 +52,16 @@ class Configuration:
         self.window_width_each_subplot = 4
         self.window_height_each_subplot = 2
 
+        self.dual_cursor_mode = False
+
 
 class SimulationPlotter:
 
     def __init__(self):
         self.configuration = Configuration()
         self.name_to_object_dictionary = {}
+
+        self.subplot_cursors = {}
 
     def append(self, signal_object):
         """
@@ -305,7 +310,7 @@ class SimulationPlotter:
         This method determines the layout and size of the figure, creates subplots, and plots each signal
         specified in the configuration's `subplots_signals_list`. It handles both single and multiple subplot
         arrangements, supports custom x-axis sequences, and applies labels, line styles, and markers as specified
-        in each signal's configuration. Interactive cursors are enabled for each subplot.
+        in each signal's configuration. Interactive cursors are enabled for each subplot with dual-cursor mode support.
 
         Args:
             suptitle (str, optional): The title for the entire figure. Defaults to an empty string.
@@ -336,12 +341,15 @@ class SimulationPlotter:
 
         figure_size = (self.configuration.window_width_base +
                        self.configuration.window_width_each_subplot *
-                       (shape[1, 0] - 1),
+                       (shape[1, 0] - 1) + 2,
                        self.configuration.window_height_base +
                        self.configuration.window_height_each_subplot * (shape[0, 0] - 1))
 
         fig, axs = plt.subplots(shape[0, 0], shape[1, 0], figsize=figure_size)
+        plt.subplots_adjust(right=0.85)
         fig.suptitle(suptitle)
+
+        self.subplot_cursors = {}
 
         for signal_info in subplots_signals_list:
             signal_object_list = self.name_to_object_dictionary[signal_info.signal_name]
@@ -379,13 +387,167 @@ class SimulationPlotter:
             else:
                 ax = axs[signal_info.shape[0, 0], signal_info.shape[1, 0]]
 
-            ax.plot(x_sequence_signal, signal,
-                    label=label_name,
-                    linestyle=signal_info.line_style, marker=signal_info.marker)
-            mplcursors.cursor(ax)
+            line, = ax.plot(x_sequence_signal, signal,
+                            label=label_name,
+                            linestyle=signal_info.line_style, marker=signal_info.marker)
+
+            subplot_key = (signal_info.shape[0, 0], signal_info.shape[1, 0])
+            if subplot_key not in self.subplot_cursors:
+                # cursor_mpl = mplcursors.cursor(ax, multiple=True)
+                cursor_mpl = mplcursors.cursor(ax, multiple=False)
+                cursor_mpl.enabled = True
+                self.subplot_cursors[subplot_key] = {
+                    'ax': ax,
+                    'cursor_mpl': cursor_mpl,
+                    'cursor1': None,
+                    'cursor2': None,
+                    'text1': None,
+                    'text2': None,
+                    'text_diff': None,
+                    'x_data': x_sequence_signal.flatten(),
+                    'y_data': signal.flatten()
+                }
+            else:
+                cursor_info = self.subplot_cursors[subplot_key]
+                mplcursors.cursor(line, multiple=False)
+
             ax.legend()
             ax.set_xlabel(signal_info.x_sequence_name)
             ax.grid(True)
+
+        check_ax = plt.axes([0.0, 0.0, 0.05, 0.05])
+        check = CheckButtons(check_ax, ["Dual cursor\nmode"], [False])
+
+        def clear_dual_cursors(subplot_key):
+            """
+            Deletes dual cursors and associated texts from the specified subplot.
+            """
+            cursor_info = self.subplot_cursors[subplot_key]
+            if cursor_info['cursor1'] is not None:
+                cursor_info['cursor1'].remove()
+                cursor_info['cursor1'] = None
+            if cursor_info['cursor2'] is not None:
+                cursor_info['cursor2'].remove()
+                cursor_info['cursor2'] = None
+            if cursor_info['text1'] is not None:
+                cursor_info['text1'].remove()
+                cursor_info['text1'] = None
+            if cursor_info['text2'] is not None:
+                cursor_info['text2'].remove()
+                cursor_info['text2'] = None
+            if cursor_info['text_diff'] is not None:
+                cursor_info['text_diff'].remove()
+                cursor_info['text_diff'] = None
+
+        def clear_mplcursors(subplot_key):
+            """
+            Deletes all mplcursor selections from the specified subplot.
+            """
+            cursor_info = self.subplot_cursors[subplot_key]
+            for sel in list(cursor_info['cursor_mpl'].selections):
+                cursor_info['cursor_mpl'].remove_selection(sel)
+
+        def toggle_mode(label):
+            """
+            Handles the event when the checkbox is clicked.
+            """
+            self.configuration.dual_cursor_mode = check.get_status()[0]
+
+            for subplot_key, cursor_info in self.subplot_cursors.items():
+                if self.configuration.dual_cursor_mode:
+
+                    cursor_info['cursor_mpl'].enabled = False
+                    clear_mplcursors(subplot_key)
+                else:
+                    cursor_info['cursor_mpl'].enabled = True
+                    clear_dual_cursors(subplot_key)
+
+            fig.canvas.draw_idle()
+
+        def on_click(event):
+            """
+            Handles the click event.
+            """
+            if not self.configuration.dual_cursor_mode:
+                return
+
+            clicked_subplot_key = None
+            for subplot_key, cursor_info in self.subplot_cursors.items():
+                if event.inaxes == cursor_info['ax']:
+                    clicked_subplot_key = subplot_key
+                    break
+
+            if clicked_subplot_key is None:
+                return
+
+            cursor_info = self.subplot_cursors[clicked_subplot_key]
+            ax = cursor_info['ax']
+            x_data = cursor_info['x_data']
+            y_data = cursor_info['y_data']
+
+            cx = event.xdata
+            # Find the index of the x value closest to the click position
+            idx = np.abs(x_data - cx).argmin()
+            cy = y_data[idx]
+
+            # Left click -> Cursor 1
+            if event.button == 1:
+                if cursor_info['cursor1'] is not None:
+                    cursor_info['cursor1'].remove()
+                if cursor_info['text1'] is not None:
+                    cursor_info['text1'].remove()
+
+                cursor_info['cursor1'] = ax.axvline(
+                    cx, color="red", linestyle="--", linewidth=1.2)
+                cursor_info['text1'] = ax.text(
+                    0.02, 0.95,
+                    f"Cursor1: x={cx:.3f}, y={cy:.3f}",
+                    transform=ax.transAxes,
+                    color="red",
+                    fontsize=10,
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+                )
+
+            # Right click -> Cursor 2
+            elif event.button == 3:
+                if cursor_info['cursor2'] is not None:
+                    cursor_info['cursor2'].remove()
+                if cursor_info['text2'] is not None:
+                    cursor_info['text2'].remove()
+
+                cursor_info['cursor2'] = ax.axvline(
+                    cx, color="blue", linestyle="--", linewidth=1.2)
+                cursor_info['text2'] = ax.text(
+                    0.02, 0.90,
+                    f"Cursor2: x={cx:.3f}, y={cy:.3f}",
+                    transform=ax.transAxes,
+                    color="blue",
+                    fontsize=10,
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+                )
+
+            if cursor_info['cursor1'] is not None and cursor_info['cursor2'] is not None:
+                x1 = cursor_info['cursor1'].get_xdata()[0]
+                x2 = cursor_info['cursor2'].get_xdata()[0]
+                diff = abs(x2 - x1)
+
+                if cursor_info['text_diff'] is not None:
+                    cursor_info['text_diff'].remove()
+
+                cursor_info['text_diff'] = ax.text(
+                    0.02, 0.85,
+                    f"Δx = {diff:.3f}",
+                    transform=ax.transAxes,
+                    color="black",
+                    fontsize=11,
+                    fontweight="bold",
+                    bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8)
+                )
+
+            fig.canvas.draw_idle()
+
+        check.on_clicked(toggle_mode)
+        fig.canvas.mpl_connect("button_press_event", on_click)
 
     def plot(self, suptitle=""):
         """
