@@ -393,7 +393,8 @@ class SimulationPlotter:
 
             subplot_key = (signal_info.shape[0, 0], signal_info.shape[1, 0])
             if subplot_key not in self.subplot_cursors:
-                cursor_mpl = mplcursors.cursor(ax, multiple=True)
+                # cursor_mpl = mplcursors.cursor(ax, multiple=True)
+                cursor_mpl = mplcursors.cursor(ax, multiple=False)
                 cursor_mpl.enabled = True
                 self.subplot_cursors[subplot_key] = {
                     'ax': ax,
@@ -408,7 +409,7 @@ class SimulationPlotter:
                 }
             else:
                 cursor_info = self.subplot_cursors[subplot_key]
-                mplcursors.cursor(line, multiple=True)
+                mplcursors.cursor(line, multiple=False)
 
             ax.legend()
             ax.set_xlabel(signal_info.x_sequence_name)
