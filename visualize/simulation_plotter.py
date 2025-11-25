@@ -55,6 +55,105 @@ class Configuration:
         self.dual_cursor_mode = False
 
 
+class MplZoomHelper:
+    def __init__(self, ax, zoom_rate=0.9):
+        self.ax = ax
+        self.ctrl_flag = False
+        self.zoom_rate = zoom_rate
+        self.canvas = ax.figure.canvas
+
+        self.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.canvas.mpl_connect('key_release_event', self.on_key_release)
+        self.canvas.mpl_connect('scroll_event', self.on_scroll)
+
+    def on_key_press(self, event):
+        """
+        Handles key press events to track Control key state.
+
+        Sets the ctrl_flag to True when the Control key is pressed,
+        enabling vertical zoom mode for scroll events.
+
+        Args:
+            event: The key press event object containing key information.
+        """
+        if event.key == 'control':
+            self.ctrl_flag = True
+
+    def on_key_release(self, event):
+        """
+        Handles key release events to track Control key state.
+
+        Sets the ctrl_flag to False when the Control key is released,
+        disabling vertical zoom mode for scroll events.
+
+        Args:
+            event: The key release event object containing key information.
+        """
+        if event.key == 'control':
+            self.ctrl_flag = False
+
+    def on_scroll(self, event):
+        """
+        Handles scroll events to perform zooming on the plot.
+        Zooms in or out on the x-axis or y-axis depending on
+         the state of the ctrl_flag (Control key).
+        Args:
+            event: The scroll event object containing scroll information.
+        """
+        if event.inaxes is not self.ax:
+            return
+
+        if event.xdata is None and event.ydata is None:
+            return
+
+        if self.ctrl_flag:
+            self._on_scroll_y(event)
+        else:
+            self._on_scroll_x(event)
+
+        self.ax.figure.canvas.draw_idle()
+
+    def _on_scroll_x(self, event):
+        """
+        Performs zooming on the x-axis based on scroll events.
+        Args:
+            event: The scroll event object containing scroll information.
+        """
+        x_pos = event.xdata
+        if x_pos is None:
+            return
+        min_value, max_value = self.ax.get_xlim()
+        if event.button == 'up':
+            new_min = x_pos - (x_pos - min_value) * self.zoom_rate
+            new_max = (max_value - x_pos) * self.zoom_rate + x_pos
+        elif event.button == 'down':
+            new_min = x_pos - (x_pos - min_value) / self.zoom_rate
+            new_max = (max_value - x_pos) / self.zoom_rate + x_pos
+        else:
+            return
+        self.ax.set_xlim(new_min, new_max)
+
+    def _on_scroll_y(self, event):
+        """
+        Performs zooming on the y-axis based on scroll events.
+        Args:
+            event: The scroll event object containing scroll information.
+        """
+        y_pos = event.ydata
+        if y_pos is None:
+            return
+        min_value, max_value = self.ax.get_ylim()
+        if event.button == 'up':
+            new_min = y_pos - (y_pos - min_value) * self.zoom_rate
+            new_max = (max_value - y_pos) * self.zoom_rate + y_pos
+        elif event.button == 'down':
+            new_min = y_pos - (y_pos - min_value) / self.zoom_rate
+            new_max = (max_value - y_pos) / self.zoom_rate + y_pos
+        else:
+            return
+        self.ax.set_ylim(new_min, new_max)
+
+
 class SimulationPlotter:
 
     def __init__(self):
@@ -396,6 +495,8 @@ class SimulationPlotter:
                 # cursor_mpl = mplcursors.cursor(ax, multiple=True)
                 cursor_mpl = mplcursors.cursor(ax, multiple=False)
                 cursor_mpl.enabled = True
+                # instantiate zoom helper for this axis
+                zoom_helper = MplZoomHelper(ax)
                 self.subplot_cursors[subplot_key] = {
                     'ax': ax,
                     'cursor_mpl': cursor_mpl,
@@ -405,7 +506,8 @@ class SimulationPlotter:
                     'text2': None,
                     'text_diff': None,
                     'x_data': x_sequence_signal.flatten(),
-                    'y_data': signal.flatten()
+                    'y_data': signal.flatten(),
+                    'zoom_helper': zoom_helper
                 }
             else:
                 cursor_info = self.subplot_cursors[subplot_key]
