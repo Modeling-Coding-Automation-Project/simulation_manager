@@ -455,12 +455,24 @@ class SimulationPlotter:
 
             steps = len(signal_object_list)
 
-            x_sequence_signal = np.zeros((steps, 1))
+            # Build x-axis sequence as a (steps,1) numeric array.
+            # Normalize various possible shapes (e.g., (N,1), (N,), list of scalars)
             if signal_info.x_sequence is not None:
-                for i in range(steps):
-                    x_sequence_signal[i, 0] = signal_info.x_sequence[i]
+                x_arr = np.asarray(signal_info.x_sequence)
+                # Flatten any (N,1) or higher-dim arrays to 1D
+                x_arr = x_arr.reshape(-1)
+                # If provided sequence is shorter than steps, pad with last value
+                if x_arr.shape[0] < steps:
+                    if x_arr.shape[0] == 0:
+                        x_arr = np.zeros(steps)
+                    else:
+                        pad = np.empty(steps)
+                        pad[:] = x_arr[-1]
+                        pad[: x_arr.shape[0]] = x_arr
+                        x_arr = pad
+                x_sequence_signal = np.asarray(x_arr[:steps]).reshape(steps, 1)
             else:
-                x_sequence_signal = np.arange(steps)
+                x_sequence_signal = np.arange(steps).reshape(steps, 1)
 
             signal = np.zeros((steps, 1))
             if isinstance(signal_object_list[0], np.ndarray):
