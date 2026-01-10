@@ -15,11 +15,17 @@ Classes:
         It provides methods to append signals, assign them to subplots,
          and generate plots with customizable appearance and layout.
 """
+import os
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
 import mplcursors
 import numpy as np
 import inspect
+
+if os.name == 'nt':
+    plt.rcParams['font.family'] = 'Meiryo'
+else:
+    plt.rcParams['font.family'] = 'Noto Sans CJK JP'
 
 
 class SubplotsInfo:
