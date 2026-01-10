@@ -33,6 +33,7 @@ SimulationPlotter クラスは、時間系列データ（信号）の可視化�
 ``` python
 plotter = SimulationPlotter(activate_dump=True)
 ```
+-
   - メンバー関数「plot」を実行したとき、プロットデータをファイルに保存できます。
   - 保存先は「./cache/simulation_plotter_dumps/」になります。
   - 保存したファイルをロードしてプロットするには、例えば以下のように実行します。
