@@ -722,16 +722,77 @@ class SimulationPlotter:
         check.on_clicked(toggle_mode)
         fig.canvas.mpl_connect("button_press_event", on_click)
 
-    def plot(self, suptitle=""):
+    def plot(
+        self,
+        suptitle="",
+        dump_file_path=None
+    ):
         """
-        Generates and displays the simulation plot.
-
-        This method prepares the plot by calling `pre_plot` with an optional super title,
-        then displays the plot window using matplotlib's `plt.show()`.
+        Plots the simulation data either from the current instance
+          or loads from a dump file.
 
         Args:
-            suptitle (str, optional): The super title for the plot. Defaults to an empty string.
+            suptitle (str, optional): The title for the entire figure.
+            Defaults to an empty string.
+            dump_file_path (str, optional): Path to a dump file or
+              directory containing dump files.
+            If None, plots the current instance. Defaults to None.
+            If dump_file_path is None, the method calls pre_plot()
+            on the current instance
+            to generate and display the plots. If a dump_file_path is provided,
+            it attempts to load the dump file,
+            reconstruct the SimulationPlotter instance,
+            and calls its plot() method.
         """
-        self.pre_plot(suptitle)
 
-        plt.show()
+        if dump_file_path is None:
+            self.pre_plot(suptitle)
+            plt.show()
+            return
+
+        path = dump_file_path
+        if os.path.isdir(path):
+            npz_files = [os.path.join(path, f) for f in os.listdir(
+                path) if f.lower().endswith('.npz')]
+            if not npz_files:
+                print(f"No .npz files found in directory: {path}")
+                return
+            path = max(npz_files, key=os.path.getmtime)
+
+        if not os.path.exists(path):
+            alt = os.path.join(DUMP_FOLDER_PATH, path)
+            if os.path.exists(alt):
+                path = alt
+
+        try:
+            with np.load(path, allow_pickle=True) as npz:
+                pickled = npz['simulation_plotter']
+                if isinstance(pickled, np.ndarray):
+                    pickled = pickled.item()
+            loaded = pickle.loads(pickled)
+        except Exception as e:
+            print(f"Failed to load dump file '{path}': {e}")
+            return
+
+        if hasattr(loaded, 'plot') and callable(getattr(loaded, 'plot')):
+            try:
+                loaded.activate_dump = False
+                loaded.plot(suptitle)
+            except Exception as e:
+                print(f"Failed to call plot() on loaded object: {e}")
+            return
+
+        if isinstance(loaded, dict):
+            sp = SimulationPlotter(activate_dump=False)
+            for k, v in loaded.items():
+                try:
+                    setattr(sp, k, v)
+                except Exception:
+                    pass
+            try:
+                sp.plot(suptitle)
+            except Exception as e:
+                print(f"Failed to plot reconstructed SimulationPlotter: {e}")
+            return
+
+        print("Loaded dump does not contain a usable SimulationPlotter object.")
