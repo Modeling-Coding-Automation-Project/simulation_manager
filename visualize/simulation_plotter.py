@@ -29,6 +29,8 @@ if os.name == 'nt':
 else:
     plt.rcParams['font.family'] = 'Noto Sans CJK JP'
 
+DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
+
 
 class SubplotsInfo:
     def __init__(self, signal_name, shape,
@@ -447,8 +449,12 @@ class SimulationPlotter:
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         if filename is None:
             filename = f"SimulationPlotterData_{timestamp}.npz"
+
+        save_file_path = os.path.join(DUMP_FOLDER_PATH, filename)
+        os.makedirs(DUMP_FOLDER_PATH, exist_ok=True)
+
         try:
-            np.savez(filename, simulation_plotter=pickled)
+            np.savez(save_file_path, simulation_plotter=pickled)
         except Exception as e:
             print(f"Failed to save SimulationPlotter dump: {e}")
 
