@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
 import mplcursors
 import numpy as np
+import pickle
+from datetime import datetime
 import inspect
 
 if os.name == 'nt':
@@ -162,9 +164,11 @@ class MplZoomHelper:
 
 class SimulationPlotter:
 
-    def __init__(self):
+    def __init__(self, activate_dump=False):
         self.configuration = Configuration()
         self.name_to_object_dictionary = {}
+
+        self.activate_dump = activate_dump
 
         self.subplot_cursors = {}
 
@@ -408,6 +412,46 @@ class SimulationPlotter:
                             line_style=line_style, marker=marker,
                             label=label_text)
 
+    def _dump_simulation_plotter(self, filename=None):
+        """
+        Internal helper to dump the SimulationPlotter instance (or a
+        sanitized snapshot) into a timestamped .npz file.
+
+        If direct pickling of `self` fails, a sanitized `snapshot`
+        dictionary is constructed where non-pickleable members are
+        replaced with `None` (except for `subplot_cursors`, which
+        records only `x_data`/`y_data`).
+        """
+        try:
+            pickled = pickle.dumps(self)
+        except Exception:
+            snapshot = {}
+            for k, v in self.__dict__.items():
+                if k == 'subplot_cursors':
+                    sc = {}
+                    for sk, sinfo in v.items():
+                        sc[str(sk)] = {
+                            'x_data': sinfo.get('x_data'),
+                            'y_data': sinfo.get('y_data')
+                        }
+                    snapshot[k] = sc
+                else:
+                    try:
+                        pickle.dumps(v)
+                        snapshot[k] = v
+                    except Exception:
+                        snapshot[k] = None
+
+            pickled = pickle.dumps(snapshot)
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        if filename is None:
+            filename = f"SimulationPlotterData_{timestamp}.npz"
+        try:
+            np.savez(filename, simulation_plotter=pickled)
+        except Exception as e:
+            print(f"Failed to save SimulationPlotter dump: {e}")
+
     def pre_plot(self, suptitle=""):
         """
         Prepares and displays subplots for visualizing simulation signals based on the current configuration.
@@ -434,6 +478,9 @@ class SimulationPlotter:
         if len(subplots_signals_list) == 0:
             print("No subplots to show.")
             return
+
+        if self.activate_dump:
+            self._dump_simulation_plotter()
 
         shape = np.zeros((2, 1), dtype=int)
         for signal_info in subplots_signals_list:
