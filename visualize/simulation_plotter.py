@@ -15,11 +15,21 @@ Classes:
         It provides methods to append signals, assign them to subplots,
          and generate plots with customizable appearance and layout.
 """
+import os
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
 import mplcursors
 import numpy as np
+import pickle
+from datetime import datetime
 import inspect
+
+if os.name == 'nt':
+    plt.rcParams['font.family'] = 'Meiryo'
+else:
+    plt.rcParams['font.family'] = 'Noto Sans CJK JP'
+
+DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
 
 
 class SubplotsInfo:
@@ -156,9 +166,11 @@ class MplZoomHelper:
 
 class SimulationPlotter:
 
-    def __init__(self):
+    def __init__(self, activate_dump=False):
         self.configuration = Configuration()
         self.name_to_object_dictionary = {}
+
+        self.activate_dump = activate_dump
 
         self.subplot_cursors = {}
 
@@ -402,6 +414,50 @@ class SimulationPlotter:
                             line_style=line_style, marker=marker,
                             label=label_text)
 
+    def _dump_simulation_plotter(self, filename=None):
+        """
+        Internal helper to dump the SimulationPlotter instance (or a
+        sanitized snapshot) into a timestamped .npz file.
+
+        If direct pickling of `self` fails, a sanitized `snapshot`
+        dictionary is constructed where non-pickleable members are
+        replaced with `None` (except for `subplot_cursors`, which
+        records only `x_data`/`y_data`).
+        """
+        try:
+            pickled = pickle.dumps(self)
+        except Exception:
+            snapshot = {}
+            for k, v in self.__dict__.items():
+                if k == 'subplot_cursors':
+                    sc = {}
+                    for sk, sinfo in v.items():
+                        sc[str(sk)] = {
+                            'x_data': sinfo.get('x_data'),
+                            'y_data': sinfo.get('y_data')
+                        }
+                    snapshot[k] = sc
+                else:
+                    try:
+                        pickle.dumps(v)
+                        snapshot[k] = v
+                    except Exception:
+                        snapshot[k] = None
+
+            pickled = pickle.dumps(snapshot)
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        if filename is None:
+            filename = f"SimulationPlotterData_{timestamp}.npz"
+
+        save_file_path = os.path.join(DUMP_FOLDER_PATH, filename)
+        os.makedirs(DUMP_FOLDER_PATH, exist_ok=True)
+
+        try:
+            np.savez(save_file_path, simulation_plotter=pickled)
+        except Exception as e:
+            print(f"Failed to save SimulationPlotter dump: {e}")
+
     def pre_plot(self, suptitle=""):
         """
         Prepares and displays subplots for visualizing simulation signals based on the current configuration.
@@ -428,6 +484,9 @@ class SimulationPlotter:
         if len(subplots_signals_list) == 0:
             print("No subplots to show.")
             return
+
+        if self.activate_dump:
+            self._dump_simulation_plotter()
 
         shape = np.zeros((2, 1), dtype=int)
         for signal_info in subplots_signals_list:
@@ -663,16 +722,77 @@ class SimulationPlotter:
         check.on_clicked(toggle_mode)
         fig.canvas.mpl_connect("button_press_event", on_click)
 
-    def plot(self, suptitle=""):
+    def plot(
+        self,
+        suptitle="",
+        dump_file_path=None
+    ):
         """
-        Generates and displays the simulation plot.
-
-        This method prepares the plot by calling `pre_plot` with an optional super title,
-        then displays the plot window using matplotlib's `plt.show()`.
+        Plots the simulation data either from the current instance
+          or loads from a dump file.
 
         Args:
-            suptitle (str, optional): The super title for the plot. Defaults to an empty string.
+            suptitle (str, optional): The title for the entire figure.
+            Defaults to an empty string.
+            dump_file_path (str, optional): Path to a dump file or
+              directory containing dump files.
+            If None, plots the current instance. Defaults to None.
+            If dump_file_path is None, the method calls pre_plot()
+            on the current instance
+            to generate and display the plots. If a dump_file_path is provided,
+            it attempts to load the dump file,
+            reconstruct the SimulationPlotter instance,
+            and calls its plot() method.
         """
-        self.pre_plot(suptitle)
 
-        plt.show()
+        if dump_file_path is None:
+            self.pre_plot(suptitle)
+            plt.show()
+            return
+
+        path = dump_file_path
+        if os.path.isdir(path):
+            npz_files = [os.path.join(path, f) for f in os.listdir(
+                path) if f.lower().endswith('.npz')]
+            if not npz_files:
+                print(f"No .npz files found in directory: {path}")
+                return
+            path = max(npz_files, key=os.path.getmtime)
+
+        if not os.path.exists(path):
+            alt = os.path.join(DUMP_FOLDER_PATH, path)
+            if os.path.exists(alt):
+                path = alt
+
+        try:
+            with np.load(path, allow_pickle=True) as npz:
+                pickled = npz['simulation_plotter']
+                if isinstance(pickled, np.ndarray):
+                    pickled = pickled.item()
+            loaded = pickle.loads(pickled)
+        except Exception as e:
+            print(f"Failed to load dump file '{path}': {e}")
+            return
+
+        if hasattr(loaded, 'plot') and callable(getattr(loaded, 'plot')):
+            try:
+                loaded.activate_dump = False
+                loaded.plot(suptitle)
+            except Exception as e:
+                print(f"Failed to call plot() on loaded object: {e}")
+            return
+
+        if isinstance(loaded, dict):
+            sp = SimulationPlotter(activate_dump=False)
+            for k, v in loaded.items():
+                try:
+                    setattr(sp, k, v)
+                except Exception:
+                    pass
+            try:
+                sp.plot(suptitle)
+            except Exception as e:
+                print(f"Failed to plot reconstructed SimulationPlotter: {e}")
+            return
+
+        print("Loaded dump does not contain a usable SimulationPlotter object.")

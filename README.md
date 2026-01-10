@@ -28,6 +28,21 @@ SimulationPlotter クラスは、時間系列データ（信号）の可視化�
   - Dual cursor modeのチェックを入れると、2軸カーソルを表示できます。
     - 左クリック、右クリックで、それぞれのカーソルをそのマウスカーソル地点に出せます。
 
+- ログ保存機能
+  - plotterのクラスインスタンスを以下のように定義すると、
+``` python
+plotter = SimulationPlotter(activate_dump=True)
+```
+-
+  - メンバー関数「plot」を実行したとき、プロットデータをファイルに保存できます。
+  - 保存先は「./cache/simulation_plotter_dumps/」になります。
+  - 保存したファイルをロードしてプロットするには、例えば以下のように実行します。
+``` python
+plotter.plot(
+    dump_file_path="./cache/simulation_plotter_dumps/SimulationPlotterData_20260110142854.npz",
+)
+```
+
 ## サポート
 
 新規にissueを作成して、詳細をお知らせください。
