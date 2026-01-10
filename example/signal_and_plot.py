@@ -26,7 +26,7 @@ time, input_signal = PulseGenerator.sample_pulse(
 )
 
 # plot the signal
-plotter = SimulationPlotter()
+plotter = SimulationPlotter(activate_dump=True)
 
 plotter.append_sequence_name(input_signal, "input_signal")
 
