@@ -4,9 +4,13 @@ This script demonstrates the generation and visualization of
 It creates a pulse input signal with specified parameters,
  then visualizes the signal using a simulation plotter.
 """
+from __future__ import annotations
+
 import os
 import sys
-sys.path.append(os.getcwd())
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 import matplotlib.pyplot as plt
