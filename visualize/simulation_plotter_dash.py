@@ -412,8 +412,13 @@ class SimulationPlotterDash:
             signal = np.zeros(steps)
             if isinstance(signal_object_list[0], np.ndarray):
                 for i in range(steps):
-                    signal[i] = signal_object_list[i][signal_info.column,
-                                                      signal_info.row]
+                    arr = signal_object_list[i]
+                    if arr.ndim == 0:
+                        signal[i] = arr.item()
+                    elif arr.ndim == 1:
+                        signal[i] = arr[signal_info.column]
+                    else:
+                        signal[i] = arr[signal_info.column, signal_info.row]
             else:
                 for i in range(steps):
                     signal[i] = signal_object_list[i]
