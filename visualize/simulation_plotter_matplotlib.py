@@ -785,7 +785,7 @@ class SimulationPlotterMatplotlib:
             return
 
         if isinstance(loaded, dict):
-            sp = SimulationPlotter(activate_dump=False)
+            sp = SimulationPlotterMatplotlib(activate_dump=False)
             for k, v in loaded.items():
                 try:
                     setattr(sp, k, v)
@@ -794,7 +794,8 @@ class SimulationPlotterMatplotlib:
             try:
                 sp.plot(suptitle)
             except Exception as e:
-                print(f"Failed to plot reconstructed SimulationPlotter: {e}")
+                print(
+                    f"Failed to plot reconstructed SimulationPlotterMatplotlib: {e}")
             return
 
-        print("Loaded dump does not contain a usable SimulationPlotter object.")
+        print("Loaded dump does not contain a usable SimulationPlotterMatplotlib object.")
