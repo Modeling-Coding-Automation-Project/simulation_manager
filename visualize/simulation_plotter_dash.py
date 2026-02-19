@@ -485,18 +485,6 @@ class SimulationPlotterDash:
                     ),
                 ],
             ),
-            html.Div(
-                id='cursor-info',
-                style={
-                    'fontFamily': 'monospace',
-                    'fontSize': '13px',
-                    'padding': '6px 12px',
-                    'minHeight': '20px',
-                    'backgroundColor': '#fffbe6',
-                    'borderBottom': '1px solid #ddd',
-                    'whiteSpace': 'pre',
-                },
-            ),
             dcc.Graph(
                 id='main-graph',
                 figure=fig,
@@ -523,7 +511,6 @@ class SimulationPlotterDash:
 
         @app.callback(
             Output('main-graph', 'figure'),
-            Output('cursor-info', 'children'),
             Output('cursor-store', 'data'),
             Input('main-graph', 'clickData'),
             Input('dual-cursor-toggle', 'value'),
@@ -540,12 +527,18 @@ class SimulationPlotterDash:
             if triggered_id == 'dual-cursor-toggle':
                 if not dual_mode:
                     fig_data['layout']['shapes'] = []
+                    existing_ann = list(
+                        fig_data['layout'].get('annotations', []))
+                    fig_data['layout']['annotations'] = [
+                        a for a in existing_ann
+                        if not (a.get('name') or '').startswith(
+                            'cursor_info_')]
                     store_data = {'1': {}, '2': {}}
-                    return fig_data, '', store_data
-                return fig_data, '', store_data
+                    return fig_data, store_data
+                return fig_data, store_data
 
             if not dual_mode or click_data is None:
-                return fig_data, '', store_data
+                return fig_data, store_data
 
             point = click_data['points'][0]
             x_clicked = point['x']
@@ -586,21 +579,66 @@ class SimulationPlotterDash:
 
             fig_data['layout']['shapes'] = shapes
 
-            info_lines = []
-            for ckey, color_name in [('1', 'Cursor1'), ('2', 'Cursor2')]:
-                for ax_name, pos in store_data[ckey].items():
-                    y_val = pos.get('y')
-                    y_str = f", y={y_val:.4f}" if y_val is not None else ""
-                    info_lines.append(
-                        f"{color_name} ({ax_name}): x={pos['x']:.4f}{y_str}")
+            # Build per-subplot cursor info annotations
+            existing_ann = list(
+                fig_data['layout'].get('annotations', []))
+            preserved_ann = [
+                a for a in existing_ann
+                if not (a.get('name') or '').startswith('cursor_info_')]
 
-            for ax_name in store_data['1']:
-                if ax_name in store_data['2']:
+            all_x_axes = set()
+            for ckey in ['1', '2']:
+                all_x_axes.update(store_data[ckey].keys())
+
+            for ax_name in sorted(all_x_axes):
+                y_ax = None
+                for ckey in ['1', '2']:
+                    if ax_name in store_data[ckey]:
+                        y_ax = store_data[ckey][ax_name].get('y_axis')
+                        if y_ax:
+                            break
+                if y_ax is None:
+                    continue
+
+                text_parts = []
+                for ckey, label, clr in [('1', 'C1', 'red'),
+                                         ('2', 'C2', 'blue')]:
+                    if ax_name in store_data[ckey]:
+                        pos = store_data[ckey][ax_name]
+                        y_val = pos.get('y')
+                        y_str = (f", y={y_val:.4f}"
+                                 if y_val is not None else "")
+                        text_parts.append(
+                            f'<span style="color:{clr}">'
+                            f'{label}: x={pos["x"]:.4f}{y_str}</span>')
+                if (ax_name in store_data['1']
+                        and ax_name in store_data['2']):
                     dx = abs(store_data['2'][ax_name]['x']
                              - store_data['1'][ax_name]['x'])
-                    info_lines.append(f"Δx ({ax_name}) = {dx:.4f}")
+                    text_parts.append(f'\u0394x={dx:.4f}')
 
-            return fig_data, '\n'.join(info_lines), store_data
+                if text_parts:
+                    preserved_ann.append({
+                        'name': f'cursor_info_{ax_name}',
+                        'text': '<br>'.join(text_parts),
+                        'xref': f'{ax_name} domain',
+                        'yref': f'{y_ax} domain',
+                        'x': 0.01,
+                        'y': 0.99,
+                        'xanchor': 'left',
+                        'yanchor': 'top',
+                        'showarrow': False,
+                        'font': {'size': 11, 'family': 'monospace',
+                                 'color': '#333'},
+                        'bgcolor': 'rgba(255,251,230,0.9)',
+                        'bordercolor': '#ccc',
+                        'borderwidth': 1,
+                        'borderpad': 4,
+                    })
+
+            fig_data['layout']['annotations'] = preserved_ann
+
+            return fig_data, store_data
 
         print(f"Dash app running at http://127.0.0.1:{port}/")
         app.run(port=port, debug=debug)
