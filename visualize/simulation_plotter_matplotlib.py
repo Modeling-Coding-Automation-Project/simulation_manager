@@ -1,5 +1,7 @@
 """
-This module provides the SimulationPlotter class,
+File: simulation_plotter_matplotlib.py
+
+This module provides the SimulationPlotterMatplotlib class,
 which facilitates the collection, organization,
 and visualization of simulation signal data.
 It allows users to append individual signals or
@@ -8,12 +10,6 @@ and configure plotting parameters such as labels, line styles, and markers.
 The class supports both automatic and manual naming of
 signals and x-axis sequences, and manages subplot arrangements
 for flexible and customizable visualization of simulation results.
-
-Classes:
-    SimulationPlotter:
-        A class for managing and visualizing simulation signals.
-        It provides methods to append signals, assign them to subplots,
-         and generate plots with customizable appearance and layout.
 """
 import os
 import matplotlib.pyplot as plt
