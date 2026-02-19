@@ -549,12 +549,19 @@ class SimulationPlotterDash:
 
             point = click_data['points'][0]
             x_clicked = point['x']
-            x_axis = point.get('xaxis', 'x')
+
+            # Determine the axes from the clicked trace's curveNumber,
+            # because clickData does not always include xaxis/yaxis.
+            curve_num = point.get('curveNumber', 0)
+            trace_data = fig_data['data'][curve_num]
+            x_axis = trace_data.get('xaxis', 'x')
+            y_axis = trace_data.get('yaxis', 'y')
 
             cursor_key = cursor_select
             store_data[cursor_key][x_axis] = {
                 'x': x_clicked,
                 'y': point.get('y'),
+                'y_axis': y_axis,
             }
 
             shapes = list(fig_data['layout'].get('shapes', []))
@@ -564,7 +571,6 @@ class SimulationPlotterDash:
                 if s.get('name', '') != shape_name
             ]
 
-            y_axis = x_axis.replace('x', 'y')
             color = 'red' if cursor_key == '1' else 'blue'
             shapes.append({
                 'type': 'line',
