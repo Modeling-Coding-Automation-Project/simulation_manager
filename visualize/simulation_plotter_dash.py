@@ -92,6 +92,7 @@ class SimulationPlotterDash:
         self.configuration = Configuration()
         self.name_to_object_dictionary = {}
         self.activate_dump = activate_dump
+        self._pre_plot_figures = []
 
     def append(self, signal_object):
         """
@@ -283,6 +284,42 @@ class SimulationPlotterDash:
                             line_style=line_style, marker=marker,
                             label=label_text)
 
+    def pre_plot(self, suptitle=""):
+        """
+        Prepares a figure from the current subplot configuration
+        and stores it internally for later display.
+
+        This is the Dash equivalent of SimulationPlotter.pre_plot().
+        Each call builds a Plotly figure from the currently assigned
+        signals, stores it as a new tab page, and then resets the
+        subplot assignment list so that subsequent assign / assign_all
+        calls populate a new page.
+
+        Call plot() after one or more pre_plot() calls to launch the
+        Dash server and display all pages as browser tabs.
+
+        Args:
+            suptitle (str, optional): The title for this figure page.
+                Defaults to an empty string.
+        """
+        if self.activate_dump:
+            self._dump_simulation_plotter()
+
+        fig, shape = self._build_figure(suptitle)
+        if fig is None:
+            return
+
+        tab_label = suptitle if suptitle else f"Page {len(self._pre_plot_figures) + 1}"
+        self._pre_plot_figures.append({
+            'label': tab_label,
+            'figure': fig,
+            'shape': shape,
+        })
+
+        # Reset subplot assignments for the next page
+        self.configuration.subplots_signals_list = []
+        self.configuration.subplots_shape = np.zeros((2, 1), dtype=int)
+
     def _dump_simulation_plotter(self, filename=None):
         """
         Internal helper to dump the SimulationPlotterDash instance into
@@ -435,78 +472,147 @@ class SimulationPlotterDash:
 
         return fig, shape
 
-    def _run_dash_app(self, fig, shape, port=8050, debug=False):
+    def _run_dash_app(self, fig, shape, port=8050, debug=False,
+                      tab_figures=None):
         """
-        Launch the Dash application with the given Plotly figure.
+        Launch the Dash application with the given Plotly figure(s).
+
+        When *tab_figures* is provided (a list of dicts with keys
+        'label', 'figure', 'shape'), the app renders each figure
+        inside a separate Dash tab.  When *tab_figures* is ``None``
+        the app shows a single figure (backward-compatible behaviour).
 
         Args:
-            fig: The Plotly Figure object to display.
+            fig: The Plotly Figure object to display (single-tab mode).
             shape: A (2,1) numpy array with [n_rows, n_cols].
             port (int): Port number for the Dash server. Defaults to 8050.
             debug (bool): Run Dash in debug mode. Defaults to False.
+            tab_figures (list[dict] | None): Optional list of figure
+                pages to display in tabs.
         """
         app = Dash(__name__)
 
-        graph_height = max(400, 300 * int(shape[0, 0]))
+        # ---- build pages list ------------------------------------------
+        if tab_figures and len(tab_figures) > 1:
+            pages = tab_figures
+        else:
+            # single figure – wrap for uniform handling
+            label = (tab_figures[0]['label']
+                     if tab_figures else "Plot")
+            pages = [{'label': label, 'figure': fig, 'shape': shape}]
 
-        app.layout = html.Div([
-            html.Div(
-                style={
-                    'display': 'flex',
-                    'alignItems': 'center',
-                    'gap': '20px',
-                    'padding': '8px 12px',
-                    'backgroundColor': '#f5f5f5',
-                    'borderBottom': '1px solid #ddd',
-                },
-                children=[
-                    dcc.Checklist(
-                        id='dual-cursor-toggle',
-                        options=[{'label': ' Dual cursor mode',
-                                  'value': 'on'}],
-                        value=[],
-                        style={'fontSize': '14px'},
-                    ),
-                    html.Div(
-                        id='cursor-controls',
-                        children=[
-                            html.Span('Select cursor: ',
-                                      style={'fontSize': '13px'}),
-                            dcc.RadioItems(
-                                id='cursor-select',
-                                options=[
-                                    {'label': ' Cursor 1 (red)',
-                                     'value': '1'},
-                                    {'label': ' Cursor 2 (blue)',
-                                     'value': '2'},
-                                ],
-                                value='1',
-                                inline=True,
-                                style={'fontSize': '13px'},
-                            ),
-                        ],
-                        style={'display': 'none'},
-                    ),
-                ],
-            ),
-            dcc.Graph(
-                id='main-graph',
-                figure=fig,
-                style={'height': f'{graph_height}px'},
-                config={
-                    'scrollZoom': True,
-                    'displayModeBar': True,
-                },
-            ),
-            dcc.Store(
-                id='cursor-store',
-                data={'1': {}, '2': {}},
-            ),
-        ])
+        use_tabs = len(pages) > 1
+
+        # ---- helper: build the content block for one page ---------------
+        def _page_content(page_info, idx):
+            graph_height = max(400, 300 * int(page_info['shape'][0, 0]))
+            suffix = f"-{idx}" if use_tabs else ""
+            return html.Div([
+                html.Div(
+                    style={
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'gap': '20px',
+                        'padding': '8px 12px',
+                        'backgroundColor': '#f5f5f5',
+                        'borderBottom': '1px solid #ddd',
+                    },
+                    children=[
+                        dcc.Checklist(
+                            id=f'dual-cursor-toggle{suffix}',
+                            options=[{'label': ' Dual cursor mode',
+                                      'value': 'on'}],
+                            value=[],
+                            style={'fontSize': '14px'},
+                        ),
+                        html.Div(
+                            id=f'cursor-controls{suffix}',
+                            children=[
+                                html.Span('Select cursor: ',
+                                          style={'fontSize': '13px'}),
+                                dcc.RadioItems(
+                                    id=f'cursor-select{suffix}',
+                                    options=[
+                                        {'label': ' Cursor 1 (red)',
+                                         'value': '1'},
+                                        {'label': ' Cursor 2 (blue)',
+                                         'value': '2'},
+                                    ],
+                                    value='1',
+                                    inline=True,
+                                    style={'fontSize': '13px'},
+                                ),
+                            ],
+                            style={'display': 'none'},
+                        ),
+                    ],
+                ),
+                dcc.Graph(
+                    id=f'main-graph{suffix}',
+                    figure=page_info['figure'],
+                    style={'height': f'{graph_height}px'},
+                    config={
+                        'scrollZoom': True,
+                        'displayModeBar': True,
+                    },
+                ),
+                dcc.Store(
+                    id=f'cursor-store{suffix}',
+                    data={'1': {}, '2': {}},
+                ),
+            ])
+
+        # ---- layout ----------------------------------------------------
+        if use_tabs:
+            tabs_children = []
+            for idx, page_info in enumerate(pages):
+                tabs_children.append(
+                    dcc.Tab(
+                        label=page_info['label'],
+                        children=[_page_content(page_info, idx)],
+                        style={'padding': '6px 16px'},
+                        selected_style={
+                            'padding': '6px 16px',
+                            'fontWeight': 'bold',
+                            'borderTop': '3px solid #1f77b4',
+                        },
+                    )
+                )
+            app.layout = html.Div([
+                dcc.Tabs(
+                    id='page-tabs',
+                    children=tabs_children,
+                    value=None,
+                ),
+            ])
+        else:
+            app.layout = html.Div([
+                _page_content(pages[0], 0),
+            ])
+
+        # ---- register callbacks for each page --------------------------
+        for idx in range(len(pages)):
+            suffix = f"-{idx}" if use_tabs else ""
+            self._register_page_callbacks(
+                app, suffix=suffix)
+
+        print(f"Dash app running at http://127.0.0.1:{port}/")
+        app.run(port=port, debug=debug)
+
+    @staticmethod
+    def _register_page_callbacks(app, suffix=""):
+        """
+        Register dual-cursor callbacks for a single page.
+
+        Args:
+            app: The Dash application instance.
+            suffix (str): Suffix appended to component IDs to make
+                them unique across tabs (e.g., "-0", "-1").
+        """
 
         @app.callback(
-            Output('cursor-controls', 'style'),
-            Input('dual-cursor-toggle', 'value'),
+            Output(f'cursor-controls{suffix}', 'style'),
+            Input(f'dual-cursor-toggle{suffix}', 'value'),
         )
         def toggle_cursor_controls(dual_mode_value):
             if dual_mode_value and 'on' in dual_mode_value:
@@ -514,21 +620,22 @@ class SimulationPlotterDash:
             return {'display': 'none'}
 
         @app.callback(
-            Output('main-graph', 'figure'),
-            Output('cursor-store', 'data'),
-            Input('main-graph', 'clickData'),
-            Input('dual-cursor-toggle', 'value'),
-            State('cursor-select', 'value'),
-            State('cursor-store', 'data'),
-            State('main-graph', 'figure'),
+            Output(f'main-graph{suffix}', 'figure'),
+            Output(f'cursor-store{suffix}', 'data'),
+            Input(f'main-graph{suffix}', 'clickData'),
+            Input(f'dual-cursor-toggle{suffix}', 'value'),
+            State(f'cursor-select{suffix}', 'value'),
+            State(f'cursor-store{suffix}', 'data'),
+            State(f'main-graph{suffix}', 'figure'),
             prevent_initial_call=True,
         )
         def update_cursors(click_data, dual_mode_value, cursor_select,
                            store_data, fig_data):
             triggered_id = callback_context.triggered_id
+            toggle_id = f'dual-cursor-toggle{suffix}'
             dual_mode = bool(dual_mode_value and 'on' in dual_mode_value)
 
-            if triggered_id == 'dual-cursor-toggle':
+            if triggered_id == toggle_id:
                 if not dual_mode:
                     fig_data['layout']['shapes'] = []
                     existing_ann = list(
@@ -644,9 +751,6 @@ class SimulationPlotterDash:
 
             return fig_data, store_data
 
-        print(f"Dash app running at http://127.0.0.1:{port}/")
-        app.run(port=port, debug=debug)
-
     def plot(self, suptitle="", dump_file_path=None, port=8050, debug=False):
         """
         Plots the simulation data using Plotly and Dash.
@@ -663,14 +767,34 @@ class SimulationPlotterDash:
              Defaults to False.
         """
         if dump_file_path is None:
-            if self.activate_dump:
-                self._dump_simulation_plotter()
+            # Build a figure from any remaining assigned signals
+            remaining_fig, remaining_shape = None, None
+            if self.configuration.subplots_signals_list:
+                if self.activate_dump:
+                    self._dump_simulation_plotter()
+                remaining_fig, remaining_shape = self._build_figure(suptitle)
 
-            fig, shape = self._build_figure(suptitle)
-            if fig is None:
+            # Collect all pre_plot pages + the remaining figure
+            all_pages = list(self._pre_plot_figures)
+            if remaining_fig is not None:
+                tab_label = (suptitle if suptitle
+                             else f"Page {len(all_pages) + 1}")
+                all_pages.append({
+                    'label': tab_label,
+                    'figure': remaining_fig,
+                    'shape': remaining_shape,
+                })
+
+            if not all_pages:
+                print("No subplots to show.")
                 return
 
-            self._run_dash_app(fig, shape, port=port, debug=debug)
+            # Use first page as the base fig/shape for backward compat
+            fig = all_pages[0]['figure']
+            shape = all_pages[0]['shape']
+
+            self._run_dash_app(fig, shape, port=port, debug=debug,
+                               tab_figures=all_pages)
             return
 
         path = dump_file_path
