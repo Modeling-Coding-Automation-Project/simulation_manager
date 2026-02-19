@@ -2,7 +2,7 @@
 This script demonstrates the generation and visualization of
  a pulse signal using custom signal processing and plotting utilities.
 It creates a pulse input signal with specified parameters,
- then visualizes the signal using a simulation plotter.
+ then visualizes the signal using a Plotly/Dash-based simulation plotter.
 """
 from __future__ import annotations
 
@@ -13,9 +13,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
-import matplotlib.pyplot as plt
 
-from visualize.simulation_plotter_matplotlib import SimulationPlotterMatplotlib
+from visualize.simulation_plotter_dash import SimulationPlotterDash
 from signal_edit.sampler import Sampler, PulseGenerator
 
 # create input signal
@@ -30,14 +29,14 @@ time, input_signal = PulseGenerator.sample_pulse(
 )
 
 # plot the signal
-plotter = SimulationPlotterMatplotlib(activate_dump=True)
+plotter = SimulationPlotterDash(activate_dump=True)
 
 plotter.append_sequence_name(input_signal, "input_signal")
 
 plotter.assign("input_signal", column=0, row=0, position=(0, 0),
                x_sequence=time, label="input_signal", line_style="--",
                marker='.')
+plotter.assign_all("input_signal", position=(1, 0),
+                   x_sequence=time, label="input_signal")
 
 plotter.plot("signal")
-
-plt.show()

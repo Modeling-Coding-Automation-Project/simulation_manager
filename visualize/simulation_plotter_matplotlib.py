@@ -1,5 +1,7 @@
 """
-This module provides the SimulationPlotter class,
+File: simulation_plotter_matplotlib.py
+
+This module provides the SimulationPlotterMatplotlib class,
 which facilitates the collection, organization,
 and visualization of simulation signal data.
 It allows users to append individual signals or
@@ -8,12 +10,6 @@ and configure plotting parameters such as labels, line styles, and markers.
 The class supports both automatic and manual naming of
 signals and x-axis sequences, and manages subplot arrangements
 for flexible and customizable visualization of simulation results.
-
-Classes:
-    SimulationPlotter:
-        A class for managing and visualizing simulation signals.
-        It provides methods to append signals, assign them to subplots,
-         and generate plots with customizable appearance and layout.
 """
 import os
 import matplotlib.pyplot as plt
@@ -164,7 +160,7 @@ class MplZoomHelper:
         self.ax.set_ylim(new_min, new_max)
 
 
-class SimulationPlotter:
+class SimulationPlotterMatplotlib:
 
     def __init__(self, activate_dump=False):
         self.configuration = Configuration()
@@ -204,11 +200,12 @@ class SimulationPlotter:
                 object_name = name
                 break
 
-            # %% append object
+        # %% append object
+        signal_copy = np.copy(signal_object)
         if object_name in self.name_to_object_dictionary:
-            self.name_to_object_dictionary[object_name].append(signal_object)
+            self.name_to_object_dictionary[object_name].append(signal_copy)
         else:
-            self.name_to_object_dictionary[object_name] = [signal_object]
+            self.name_to_object_dictionary[object_name] = [signal_copy]
 
     def append_name(self, signal_object, object_name):
         """
@@ -221,10 +218,11 @@ class SimulationPlotter:
             signal_object: The signal object to be associated with the object name.
             object_name (str): The key representing the name to which the signal object should be appended.
         """
+        signal_copy = np.copy(signal_object)
         if object_name in self.name_to_object_dictionary:
-            self.name_to_object_dictionary[object_name].append(signal_object)
+            self.name_to_object_dictionary[object_name].append(signal_copy)
         else:
-            self.name_to_object_dictionary[object_name] = [signal_object]
+            self.name_to_object_dictionary[object_name] = [signal_copy]
 
     def append_sequence(self, signal_sequence_object):
         """
@@ -261,14 +259,15 @@ class SimulationPlotter:
                 object_name = name
                 break
 
-            # %% append object
+        # %% append object
         for i in range(len(signal_sequence_object)):
+            signal_copy = np.copy(signal_sequence_object[i])
             if object_name in self.name_to_object_dictionary:
                 self.name_to_object_dictionary[object_name].append(
-                    signal_sequence_object[i].reshape(-1, 1))
+                    signal_copy.reshape(-1, 1))
             else:
                 self.name_to_object_dictionary[object_name] = [
-                    signal_sequence_object[i].reshape(-1, 1)]
+                    signal_copy.reshape(-1, 1)]
 
     def append_sequence_name(self, signal_sequence_object, object_name):
         """
@@ -288,12 +287,13 @@ class SimulationPlotter:
             Modifies self.name_to_object_dictionary by appending or creating entries for object_name.
         """
         for i in range(len(signal_sequence_object)):
+            signal_copy = np.copy(signal_sequence_object[i])
             if object_name in self.name_to_object_dictionary:
                 self.name_to_object_dictionary[object_name].append(
-                    signal_sequence_object[i].reshape(-1, 1))
+                    signal_copy.reshape(-1, 1))
             else:
                 self.name_to_object_dictionary[object_name] = [
-                    signal_sequence_object[i].reshape(-1, 1)]
+                    signal_copy.reshape(-1, 1)]
 
     def assign(self, signal_name, position,
                column=0, row=0, x_sequence=None, x_sequence_name=None,
@@ -396,10 +396,8 @@ class SimulationPlotter:
         else:
             this_x_sequence_name = x_sequence_name
 
-        col_size = eval(
-            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[0]")
-        row_size = eval(
-            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[1]")
+        col_size = self.name_to_object_dictionary[signal_name][0].shape[0]
+        row_size = self.name_to_object_dictionary[signal_name][0].shape[1]
 
         if label == "":
             label = signal_name
@@ -783,7 +781,7 @@ class SimulationPlotter:
             return
 
         if isinstance(loaded, dict):
-            sp = SimulationPlotter(activate_dump=False)
+            sp = SimulationPlotterMatplotlib(activate_dump=False)
             for k, v in loaded.items():
                 try:
                     setattr(sp, k, v)
@@ -792,7 +790,8 @@ class SimulationPlotter:
             try:
                 sp.plot(suptitle)
             except Exception as e:
-                print(f"Failed to plot reconstructed SimulationPlotter: {e}")
+                print(
+                    f"Failed to plot reconstructed SimulationPlotterMatplotlib: {e}")
             return
 
-        print("Loaded dump does not contain a usable SimulationPlotter object.")
+        print("Loaded dump does not contain a usable SimulationPlotterMatplotlib object.")
