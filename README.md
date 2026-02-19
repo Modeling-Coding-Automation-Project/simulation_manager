@@ -4,13 +4,52 @@
 
 本組織「Modeling-Coding-Automation-Project」にあるリポジトリで実行する時間的なシミュレーションを、効率的に行うために便利なスクリプトなどをまとめています。
 
-## SimulationPlotterクラスの使い方
+## SimulationPlotterDash クラスの使い方
 
-SimulationPlotter クラスは、時間系列データ（信号）の可視化を簡単に行うためのユーティリティです。基本的な流れは以下の通りです。
+SimulationPlotterDash クラスは、PythonのPlotly/Dashを使って、時間系列データ（信号）の可視化を簡単に行うためのユーティリティです。基本的な流れは以下の通りです。
 
 - インポートとインスタンス化
-  - from visualize.simulation_plotter import SimulationPlotter
-  - plotter = SimulationPlotter()
+  - from visualize.simulation_plotter_dash import SimulationPlotterDash
+  - plotter = SimulationPlotterDash()
+
+- 信号の追加
+  - append / append_name / append_sequence / append_sequence_name を使い、時間ステップごとの値やシーケンスを登録します。
+  - 例: plotter.append_sequence_name(time_array_and_signals, "input_signal")
+
+- サブプロットへの割り当て
+  - assign / assign_all を使って、表示したい信号とサブプロットの位置・スタイルを指定します。
+  - 例: plotter.assign("input_signal", column=0, row=0, x_sequence=time_array, label="入力")
+
+- プロットの表示
+  - plotter.plot("図のタイトル") で波形がプロットされます。
+  - pre_plot を使うと、次から別のタブで波形を表示させることができます。
+    - 最後にplot関数を実行する必要はあります。
+  - ターミナルにURLが表示されたら、ブラウザでそのURLを開きます。
+
+- ログ保存機能
+  - plotterのクラスインスタンスを以下のように定義すると、
+``` python
+plotter = SimulationPlotterDash(activate_dump=True)
+```
+-
+  - メンバー関数「plot」を実行したとき、プロットデータをファイルに保存できます。
+  - 保存先は「./cache/simulation_plotter_dumps/」になります。
+  - 保存したファイルをロードしてプロットするには、例えば以下のように実行します。
+``` python
+plotter.plot(
+    dump_file_path="./cache/simulation_plotter_dumps/SimulationPlotterDashData_20260110142854.npz",
+)
+```
+
+## SimulationPlotterMatplotlib クラスの使い方
+
+現在は、SimulationPlotterDashの使用をお勧めしています。
+
+SimulationPlotterMatplotlib クラスは、PythonのMatplotlibを使って時間系列データ（信号）の可視化を簡単に行うためのユーティリティです。基本的な流れは以下の通りです。
+
+- インポートとインスタンス化
+  - from visualize.simulation_plotter_matplotlib import SimulationPlotterMatplotlib
+  - plotter = SimulationPlotterMatplotlib()
 
 - 信号の追加
   - append / append_name / append_sequence / append_sequence_name を使い、時間ステップごとの値やシーケンスを登録します。
@@ -31,7 +70,7 @@ SimulationPlotter クラスは、時間系列データ（信号）の可視化�
 - ログ保存機能
   - plotterのクラスインスタンスを以下のように定義すると、
 ``` python
-plotter = SimulationPlotter(activate_dump=True)
+plotter = SimulationPlotterMatplotlib(activate_dump=True)
 ```
 -
   - メンバー関数「plot」を実行したとき、プロットデータをファイルに保存できます。
@@ -39,7 +78,7 @@ plotter = SimulationPlotter(activate_dump=True)
   - 保存したファイルをロードしてプロットするには、例えば以下のように実行します。
 ``` python
 plotter.plot(
-    dump_file_path="./cache/simulation_plotter_dumps/SimulationPlotterData_20260110142854.npz",
+    dump_file_path="./cache/simulation_plotter_dumps/SimulationPlotterMatplotlibData_20260110142854.npz",
 )
 ```
 
