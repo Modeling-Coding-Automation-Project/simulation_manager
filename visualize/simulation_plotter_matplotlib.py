@@ -164,7 +164,7 @@ class MplZoomHelper:
         self.ax.set_ylim(new_min, new_max)
 
 
-class SimulationPlotter:
+class SimulationPlotterMatplotlib:
 
     def __init__(self, activate_dump=False):
         self.configuration = Configuration()

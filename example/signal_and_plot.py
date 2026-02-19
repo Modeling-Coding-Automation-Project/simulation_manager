@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import matplotlib.pyplot as plt
 
-from visualize.simulation_plotter import SimulationPlotter
+from visualize.simulation_plotter_matplotlib import SimulationPlotterMatplotlib
 from signal_edit.sampler import Sampler, PulseGenerator
 
 # create input signal
@@ -30,7 +30,7 @@ time, input_signal = PulseGenerator.sample_pulse(
 )
 
 # plot the signal
-plotter = SimulationPlotter(activate_dump=True)
+plotter = SimulationPlotterMatplotlib(activate_dump=True)
 
 plotter.append_sequence_name(input_signal, "input_signal")
 
