@@ -262,6 +262,8 @@ class SimulationPlotterDash:
             del frame
         else:
             this_x_sequence_name = x_sequence_name
+
+        col_size = self.name_to_object_dictionary[signal_name][0].shape[0]
         row_size = self.name_to_object_dictionary[signal_name][0].shape[1]
 
         if label == "":
@@ -658,7 +660,8 @@ class SimulationPlotterDash:
             try:
                 sp.plot(suptitle, port=port, debug=debug)
             except Exception as e:
-                print(f"Failed to plot reconstructed SimulationPlotterDash: {e}")
+                print(
+                    f"Failed to plot reconstructed SimulationPlotterDash: {e}")
             return
 
         print("Loaded dump does not contain a usable "

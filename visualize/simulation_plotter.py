@@ -396,10 +396,8 @@ class SimulationPlotter:
         else:
             this_x_sequence_name = x_sequence_name
 
-        col_size = eval(
-            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[0]")
-        row_size = eval(
-            f"self.name_to_object_dictionary[\"{signal_name}\"][0].shape[1]")
+        col_size = self.name_to_object_dictionary[signal_name][0].shape[0]
+        row_size = self.name_to_object_dictionary[signal_name][0].shape[1]
 
         if label == "":
             label = signal_name
