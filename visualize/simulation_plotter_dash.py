@@ -404,11 +404,21 @@ class SimulationPlotterDash:
             fig.update_xaxes(
                 title_text=signal_info.x_sequence_name or "",
                 showgrid=True,
+                showspikes=True,
+                spikemode='across',
+                spikecolor='gray',
+                spikethickness=1,
+                spikedash='dot',
                 row=plot_row,
                 col=plot_col,
             )
             fig.update_yaxes(
                 showgrid=True,
+                showspikes=True,
+                spikemode='across',
+                spikecolor='gray',
+                spikethickness=1,
+                spikedash='dot',
                 row=plot_row,
                 col=plot_col,
             )
@@ -494,7 +504,6 @@ class SimulationPlotterDash:
                 config={
                     'scrollZoom': True,
                     'displayModeBar': True,
-                    'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
                 },
             ),
             dcc.Store(
@@ -549,12 +558,10 @@ class SimulationPlotterDash:
             }
 
             shapes = list(fig_data['layout'].get('shapes', []))
+            shape_name = f'cursor_{cursor_key}_{x_axis}'
             shapes = [
                 s for s in shapes
-                if not (
-                    s.get('xref') == x_axis
-                    and s.get('meta', {}).get('cursor') == cursor_key
-                )
+                if s.get('name', '') != shape_name
             ]
 
             y_axis = x_axis.replace('x', 'y')
@@ -568,7 +575,7 @@ class SimulationPlotterDash:
                 'xref': x_axis,
                 'yref': f'{y_axis} domain',
                 'line': {'color': color, 'width': 1.5, 'dash': 'dash'},
-                'meta': {'cursor': cursor_key},
+                'name': shape_name,
             })
 
             fig_data['layout']['shapes'] = shapes
