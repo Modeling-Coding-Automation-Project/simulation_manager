@@ -25,6 +25,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, State, callback_context
 
+HOST_NAME = "0.0.0.0"
 DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
 
 _LINE_STYLE_MAP = {
@@ -597,7 +598,10 @@ class SimulationPlotterDash:
                 app, suffix=suffix)
 
         print(f"Dash app running at http://127.0.0.1:{port}/")
-        app.run(port=port, debug=debug)
+        app.run(
+            host=HOST_NAME,
+            port=port,
+            debug=debug)
 
     @staticmethod
     def _register_page_callbacks(app, suffix=""):
