@@ -204,11 +204,12 @@ class SimulationPlotter:
                 object_name = name
                 break
 
-            # %% append object
+        # %% append object
+        signal_copy = np.copy(signal_object)
         if object_name in self.name_to_object_dictionary:
-            self.name_to_object_dictionary[object_name].append(signal_object)
+            self.name_to_object_dictionary[object_name].append(signal_copy)
         else:
-            self.name_to_object_dictionary[object_name] = [signal_object]
+            self.name_to_object_dictionary[object_name] = [signal_copy]
 
     def append_name(self, signal_object, object_name):
         """
@@ -221,10 +222,11 @@ class SimulationPlotter:
             signal_object: The signal object to be associated with the object name.
             object_name (str): The key representing the name to which the signal object should be appended.
         """
+        signal_copy = np.copy(signal_object)
         if object_name in self.name_to_object_dictionary:
-            self.name_to_object_dictionary[object_name].append(signal_object)
+            self.name_to_object_dictionary[object_name].append(signal_copy)
         else:
-            self.name_to_object_dictionary[object_name] = [signal_object]
+            self.name_to_object_dictionary[object_name] = [signal_copy]
 
     def append_sequence(self, signal_sequence_object):
         """
@@ -261,14 +263,15 @@ class SimulationPlotter:
                 object_name = name
                 break
 
-            # %% append object
+        # %% append object
         for i in range(len(signal_sequence_object)):
+            signal_copy = np.copy(signal_sequence_object[i])
             if object_name in self.name_to_object_dictionary:
                 self.name_to_object_dictionary[object_name].append(
-                    signal_sequence_object[i].reshape(-1, 1))
+                    signal_copy.reshape(-1, 1))
             else:
                 self.name_to_object_dictionary[object_name] = [
-                    signal_sequence_object[i].reshape(-1, 1)]
+                    signal_copy.reshape(-1, 1)]
 
     def append_sequence_name(self, signal_sequence_object, object_name):
         """
@@ -288,12 +291,13 @@ class SimulationPlotter:
             Modifies self.name_to_object_dictionary by appending or creating entries for object_name.
         """
         for i in range(len(signal_sequence_object)):
+            signal_copy = np.copy(signal_sequence_object[i])
             if object_name in self.name_to_object_dictionary:
                 self.name_to_object_dictionary[object_name].append(
-                    signal_sequence_object[i].reshape(-1, 1))
+                    signal_copy.reshape(-1, 1))
             else:
                 self.name_to_object_dictionary[object_name] = [
-                    signal_sequence_object[i].reshape(-1, 1)]
+                    signal_copy.reshape(-1, 1)]
 
     def assign(self, signal_name, position,
                column=0, row=0, x_sequence=None, x_sequence_name=None,
