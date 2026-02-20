@@ -469,6 +469,11 @@ class SimulationPlotterDash:
             fig.update_xaxes(
                 title_text=signal_info.x_sequence_name or "",
                 showgrid=True,
+                gridcolor='black',
+                showline=True,
+                linecolor='black',
+                linewidth=1,
+                mirror=True,
                 showspikes=True,
                 spikemode='across',
                 spikecolor='gray',
@@ -479,6 +484,11 @@ class SimulationPlotterDash:
             )
             fig.update_yaxes(
                 showgrid=True,
+                gridcolor='black',
+                showline=True,
+                linecolor='black',
+                linewidth=1,
+                mirror=True,
                 showspikes=True,
                 spikemode='across',
                 spikecolor='gray',
@@ -521,6 +531,8 @@ class SimulationPlotterDash:
             height=max(400, 300 * n_rows),
             showlegend=False,
             annotations=legend_annotations,
+            plot_bgcolor='white',
+            paper_bgcolor='white',
         )
 
         return fig, shape
