@@ -35,6 +35,11 @@ _LINE_STYLE_MAP = {
     "-.": "dashdot",
 }
 
+_PLOTLY_COLORS = [
+    '#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A',
+    '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52',
+]
+
 _MARKER_MAP = {
     ".": "circle",
     "o": "circle",
@@ -390,6 +395,10 @@ class SimulationPlotterDash:
             shared_yaxes=False,
         )
 
+        # Track legend entries per subplot: {(plot_row, plot_col): [(label, color), ...]}
+        subplot_legends = {}
+        trace_color_idx = 0
+
         for signal_info in subplots_signals_list:
             signal_object_list = self.name_to_object_dictionary[
                 signal_info.signal_name]
@@ -437,20 +446,37 @@ class SimulationPlotterDash:
             marker_symbol = (_convert_marker(signal_info.marker)
                              if signal_info.marker else "circle")
 
+            color = _PLOTLY_COLORS[trace_color_idx % len(_PLOTLY_COLORS)]
+            trace_color_idx += 1
+
             trace = go.Scatter(
                 x=x_sequence_signal.tolist(),
                 y=signal.tolist(),
                 name=label_name,
+                showlegend=False,
                 mode=mode,
-                line=dict(dash=dash_style),
-                marker=dict(symbol=marker_symbol),
+                line=dict(dash=dash_style, color=color),
+                marker=dict(symbol=marker_symbol, color=color),
             )
 
             fig.add_trace(trace, row=plot_row, col=plot_col)
 
+            legend_key = (plot_row, plot_col)
+            if legend_key not in subplot_legends:
+                subplot_legends[legend_key] = []
+            subplot_legends[legend_key].append((label_name, color))
+
             fig.update_xaxes(
                 title_text=signal_info.x_sequence_name or "",
                 showgrid=True,
+                gridcolor='black',
+                zeroline=True,
+                zerolinecolor='black',
+                zerolinewidth=1,
+                showline=True,
+                linecolor='black',
+                linewidth=1,
+                mirror=True,
                 showspikes=True,
                 spikemode='across',
                 spikecolor='gray',
@@ -461,6 +487,14 @@ class SimulationPlotterDash:
             )
             fig.update_yaxes(
                 showgrid=True,
+                gridcolor='black',
+                zeroline=True,
+                zerolinecolor='black',
+                zerolinewidth=1,
+                showline=True,
+                linecolor='black',
+                linewidth=1,
+                mirror=True,
                 showspikes=True,
                 spikemode='across',
                 spikecolor='gray',
@@ -470,10 +504,41 @@ class SimulationPlotterDash:
                 col=plot_col,
             )
 
+        # Build annotation-based legends, one block per subplot.
+        # Use axis-domain references so each annotation is positioned
+        # in the top-right corner of its own subplot area.
+        legend_annotations = []
+        for (ann_row, ann_col), entries in subplot_legends.items():
+            axis_idx = (ann_row - 1) * n_cols + ann_col
+            axis_suffix = '' if axis_idx == 1 else str(axis_idx)
+
+            lines = [
+                f"<span style='color:{clr}'>●</span> {lbl}"
+                for lbl, clr in entries
+            ]
+            legend_annotations.append(dict(
+                x=0.99,
+                y=0.99,
+                xref=f'x{axis_suffix} domain',
+                yref=f'y{axis_suffix} domain',
+                text='<br>'.join(lines),
+                showarrow=False,
+                align='left',
+                xanchor='right',
+                yanchor='top',
+                bordercolor='black',
+                borderwidth=1,
+                bgcolor='white',
+                font=dict(size=11),
+            ))
+
         fig.update_layout(
             title_text=suptitle,
             height=max(400, 300 * n_rows),
-            showlegend=True,
+            showlegend=False,
+            annotations=legend_annotations,
+            plot_bgcolor='white',
+            paper_bgcolor='white',
         )
 
         return fig, shape
