@@ -39,4 +39,11 @@ plotter.assign("input_signal", column=0, row=0, position=(0, 0),
 plotter.assign_all("input_signal", position=(1, 0),
                    x_sequence=time, label="input_signal")
 
+plotter.assign_all("input_signal", position=(0, 1),
+                   x_sequence=time, label="input_signal")
+
+plotter.assign_all("input_signal", position=(1, 1),
+                   x_sequence=time, label="input_signal")
+
+
 plotter.plot("signal")
