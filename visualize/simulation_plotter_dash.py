@@ -27,6 +27,8 @@ from dash import Dash, dcc, html, Input, Output, State, callback_context
 
 HOST_NAME = "0.0.0.0"
 DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
+_ASSETS_FOLDER = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), 'assets')
 
 _LINE_STYLE_MAP = {
     "-": "solid",
@@ -539,6 +541,7 @@ class SimulationPlotterDash:
             annotations=legend_annotations,
             plot_bgcolor='white',
             paper_bgcolor='white',
+            dragmode='zoom',
         )
 
         return fig, shape
@@ -561,7 +564,7 @@ class SimulationPlotterDash:
             tab_figures (list[dict] | None): Optional list of figure
                 pages to display in tabs.
         """
-        app = Dash(__name__)
+        app = Dash(__name__, assets_folder=_ASSETS_FOLDER)
 
         # ---- build pages list ------------------------------------------
         if tab_figures and len(tab_figures) > 1:
@@ -631,7 +634,7 @@ class SimulationPlotterDash:
                     figure=page_info['figure'],
                     style={'height': f'{graph_height}px'},
                     config={
-                        'scrollZoom': True,
+                        'scrollZoom': False,
                         'displayModeBar': True,
                     },
                 ),
