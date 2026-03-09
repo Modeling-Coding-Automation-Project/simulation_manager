@@ -169,6 +169,32 @@ function setupWheelZoom(gd) {
         mouseY <= (layout.height - margin.b);
     if (!inPlotArea) return;
 
+    /* Additionally verify the cursor is inside one of the individual subplot
+     * areas (not just inside the overall figure margins).  The space between
+     * adjacent subplots passes the margin check but does not belong to any
+     * subplot domain, so we skip zooming there. */
+    var plotWidth = layout.width - margin.l - margin.r;
+    var plotHeight = layout.height - margin.t - margin.b;
+    var normMouseX = (mouseX - margin.l) / plotWidth;
+    /* Plotly Y domain: 0 = bottom, 1 = top — invert the pixel coordinate */
+    var normMouseY = 1 - (mouseY - margin.t) / plotHeight;
+
+    var inSubplot = false;
+    Object.keys(layout).forEach(function(key) {
+      if (inSubplot) return;
+      if (!/^xaxis\d*$/.test(key) || !layout[key]) return;
+      var xDomain = layout[key].domain || [0, 1];
+      if (normMouseX < xDomain[0] || normMouseX > xDomain[1]) return;
+      /* Derive the paired y-axis key: anchor 'y' → 'yaxis', 'y2' → 'yaxis2' */
+      var anchor = layout[key].anchor || 'y';
+      var yaxisKey = 'yaxis' + anchor.replace(/^y/, '');
+      var yDomain = (layout[yaxisKey] && layout[yaxisKey].domain) || [0, 1];
+      if (normMouseY >= yDomain[0] && normMouseY <= yDomain[1]) {
+        inSubplot = true;
+      }
+    });
+    if (!inSubplot) return;
+
     e.preventDefault();
     e.stopImmediatePropagation();
 
