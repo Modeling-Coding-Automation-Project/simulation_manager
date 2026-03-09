@@ -78,13 +78,48 @@ function getNormMouseX(gd, e) {
 
 /**
  * Builds Plotly relayout updates to zoom axes matching axisPattern.
- * When normY is provided (Alt+wheel), only the yaxis whose Y domain AND
+ * When normY is provided (Shift+wheel), only the yaxis whose Y domain AND
  * paired xaxis X domain both contain the cursor position is updated.
  * This prevents zooming sibling subplots that share the same Y domain row.
+ * When pivotNormX is provided (plain wheel, X-axis zoom), only the xaxis
+ * whose domain contains the cursor is zoomed, and the zoom is anchored at
+ * the cursor's data-coordinate position so it stays fixed under the cursor.
  */
-function buildRangeUpdates(layout, axisPattern, factor, normY, normX) {
+function buildRangeUpdates(
+    layout, axisPattern, factor, normY, normX, pivotNormX) {
   var updates = {};
   var found = false;
+
+  /* For X-axis zoom (plain wheel): zoom ALL x-axes anchored at the data
+   * coordinate that corresponds to the cursor position in the hovered subplot.
+   * First pass – find the pivot data value from the subplot under the cursor.
+   * Second pass – apply zoom to every x-axis using that pivot value. */
+  if (pivotNormX !== undefined) {
+    var pivotDataX = null;
+    Object.keys(layout).forEach(function(key) {
+      if (pivotDataX !== null) return;
+      if (/^xaxis\d*$/.test(key) && layout[key] && layout[key].range) {
+        var xDomain = layout[key].domain || [0, 1];
+        if (pivotNormX >= xDomain[0] && pivotNormX <= xDomain[1]) {
+          var r = layout[key].range;
+          var domainWidth = xDomain[1] - xDomain[0];
+          var pivotFrac = (pivotNormX - xDomain[0]) / domainWidth;
+          pivotDataX = r[0] + pivotFrac * (r[1] - r[0]);
+        }
+      }
+    });
+    Object.keys(layout).forEach(function(key) {
+      if (axisPattern.test(key) && layout[key] && layout[key].range) {
+        var r = layout[key].range;
+        var pivot = (pivotDataX !== null) ? pivotDataX : (r[0] + r[1]) / 2;
+        updates[key + '.range'] =
+            [pivot - (pivot - r[0]) * factor, pivot + (r[1] - pivot) * factor];
+        found = true;
+      }
+    });
+    return found ? updates : null;
+  }
+
   Object.keys(layout).forEach(function(key) {
     if (axisPattern.test(key) && layout[key] && layout[key].range) {
       /* For Y-axis zoom: skip axes whose domain does not contain the cursor */
@@ -144,8 +179,10 @@ function setupWheelZoom(gd) {
      * is zoomed (Y domain alone is not enough when columns share a row). */
     var normY = e.shiftKey ? getNormMouseY(gd, e) : undefined;
     var normX = e.shiftKey ? getNormMouseX(gd, e) : undefined;
-    var updates =
-        buildRangeUpdates(gd._fullLayout, pattern, factor, normY, normX);
+    /* For plain wheel (X-axis zoom), anchor zoom at the cursor X position */
+    var pivotNormX = !e.shiftKey ? getNormMouseX(gd, e) : undefined;
+    var updates = buildRangeUpdates(
+        gd._fullLayout, pattern, factor, normY, normX, pivotNormX);
     if (updates) {
       Plotly.relayout(gd, updates);
     }
