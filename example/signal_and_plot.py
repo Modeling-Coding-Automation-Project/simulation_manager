@@ -34,7 +34,7 @@ plotter = SimulationPlotterMatplotlib(activate_dump=True)
 
 plotter.append_sequence_name(input_signal, "input_signal")
 
-plotter.assign("input_signal", column=0, row=0, position=(0, 0),
+plotter.assign("input_signal", position=(0, 0), row=0, column=0,
                x_sequence=time, label="input_signal", line_style="--",
                marker='.')
 

@@ -38,7 +38,7 @@ plotter = SimulationPlotterDash(activate_dump=False)
 # -- Page 1 --
 plotter.append_sequence_name(input_signal, "input_signal")
 
-plotter.assign("input_signal", column=0, row=0, position=(0, 0),
+plotter.assign("input_signal", position=(0, 0), row=0, column=0,
                x_sequence=time, label="input_signal", line_style="--",
                marker='.')
 
@@ -47,7 +47,7 @@ plotter.pre_plot("Pulse Signal")   # stores page 1, resets assignments
 # -- Page 2 --
 plotter.append_sequence_name(scaled_signal, "scaled_signal")
 
-plotter.assign("scaled_signal", column=0, row=0, position=(0, 0),
+plotter.assign("scaled_signal", position=(0, 0), row=0, column=0,
                x_sequence=time, label="scaled_signal (x2)", line_style="-",
                marker='')
 

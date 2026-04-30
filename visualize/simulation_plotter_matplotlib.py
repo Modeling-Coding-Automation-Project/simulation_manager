@@ -303,9 +303,9 @@ class SimulationPlotterMatplotlib:
 
         Parameters:
             signal_name (str): The name of the signal to assign.
-            position (tuple or list): The (x, y) position of the subplot.
-            column (int, optional): The column index for subplot placement. Defaults to 0.
-            row (int, optional): The row index for subplot placement. Defaults to 0.
+            position (tuple or list): The (row_position, column_position) of the subplot in the grid.
+            row (int, optional): The row-direction index of the signal array. Defaults to 0.
+            column (int, optional): The column-direction index of the signal array. Defaults to 0.
             x_sequence (array-like or str, optional): The x-axis data sequence or its name.
              If a string, it is resolved via `name_to_object_dictionary`.
             x_sequence_name (str, optional): The name of the x_sequence.
@@ -363,7 +363,7 @@ class SimulationPlotterMatplotlib:
 
         Parameters:
             signal_name (str): The name of the signal to assign for plotting.
-            position (Any): The position or subplot index where the signal should be plotted.
+            position (tuple or list): The (row_position, column_position) of the subplot in the grid.
             x_sequence (array-like, optional): The x-axis data sequence for the plot.
              If not provided, defaults to None.
             x_sequence_name (str, optional): The name of the x_sequence variable.
@@ -373,12 +373,12 @@ class SimulationPlotterMatplotlib:
             label (str, optional): The base label for the plot. If not provided, uses signal_name.
 
         Notes:
-            - For each element in the signal's matrix (by column and row),
+            - For each element in the signal's matrix (by row and column),
             this method calls `self.assign` to register the plot.
             - If x_sequence_name is not provided, it tries to infer the variable
              name from the caller's local scope.
             - The label for each plot is constructed as "{label}_{i}_{j}"
-             where i and j are the column and row indices.
+             where i and j are the row and column indices.
         """
         this_x_sequence_name = ""
         if (x_sequence is not None) and (x_sequence_name is None):
@@ -396,17 +396,17 @@ class SimulationPlotterMatplotlib:
         else:
             this_x_sequence_name = x_sequence_name
 
-        col_size = self.name_to_object_dictionary[signal_name][0].shape[0]
-        row_size = self.name_to_object_dictionary[signal_name][0].shape[1]
+        row_size = self.name_to_object_dictionary[signal_name][0].shape[0]
+        col_size = self.name_to_object_dictionary[signal_name][0].shape[1]
 
         if label == "":
             label = signal_name
 
-        for i in range(col_size):
-            for j in range(row_size):
+        for i in range(row_size):
+            for j in range(col_size):
                 label_text = label + "_" + str(i) + "_" + str(j)
                 self.assign(signal_name, position=position,
-                            column=i, row=j,
+                            row=i, column=j,
                             x_sequence=x_sequence,
                             x_sequence_name=this_x_sequence_name,
                             line_style=line_style, marker=marker,
@@ -534,15 +534,15 @@ class SimulationPlotterMatplotlib:
             signal = np.zeros((steps, 1))
             if isinstance(signal_object_list[0], np.ndarray):
                 for i in range(steps):
-                    signal[i, 0] = signal_object_list[i][signal_info.column,
-                                                         signal_info.row]
+                    signal[i, 0] = signal_object_list[i][signal_info.row,
+                                                         signal_info.column]
             else:
                 for i in range(steps):
                     signal[i, 0] = signal_object_list[i]
 
             if signal_info.label == "":
                 label_name = signal_info.signal_name + \
-                    f"[{signal_info.column}, {signal_info.row}]"
+                    f"[{signal_info.row}, {signal_info.column}]"
             else:
                 label_name = signal_info.label
 

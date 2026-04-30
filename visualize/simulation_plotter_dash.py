@@ -201,10 +201,10 @@ class SimulationPlotterDash:
 
         Parameters:
             signal_name (str): The name of the signal to assign.
-            position (tuple or list): The (x, y) position of the subplot.
-            column (int, optional): The column index for subplot placement.
+            position (tuple or list): The (row_position, column_position) of the subplot in the grid.
+            row (int, optional): The row-direction index of the signal array.
              Defaults to 0.
-            row (int, optional): The row index for subplot placement.
+            column (int, optional): The column-direction index of the signal array.
              Defaults to 0.
             x_sequence (array-like or str, optional): The x-axis data sequence
              or its name.
@@ -246,12 +246,11 @@ class SimulationPlotterDash:
                    line_style="-", marker="", label=""):
         """
         Assigns all elements of a signal (by name) to be plotted,
-        iterating over its columns and rows.
+        iterating over its rows and columns.
 
         Parameters:
             signal_name (str): The name of the signal to assign for plotting.
-            position (Any): The position or subplot index where the signal
-             should be plotted.
+            position (tuple or list): The (row_position, column_position) of the subplot in the grid.
             x_sequence (array-like, optional): The x-axis data sequence
              for the plot.
             x_sequence_name (str, optional): The name of the x_sequence
@@ -276,17 +275,17 @@ class SimulationPlotterDash:
         else:
             this_x_sequence_name = x_sequence_name
 
-        col_size = self.name_to_object_dictionary[signal_name][0].shape[0]
-        row_size = self.name_to_object_dictionary[signal_name][0].shape[1]
+        row_size = self.name_to_object_dictionary[signal_name][0].shape[0]
+        col_size = self.name_to_object_dictionary[signal_name][0].shape[1]
 
         if label == "":
             label = signal_name
 
-        for i in range(col_size):
-            for j in range(row_size):
+        for i in range(row_size):
+            for j in range(col_size):
                 label_text = label + "_" + str(i) + "_" + str(j)
                 self.assign(signal_name, position=position,
-                            column=i, row=j,
+                            row=i, column=j,
                             x_sequence=x_sequence,
                             x_sequence_name=this_x_sequence_name,
                             line_style=line_style, marker=marker,
@@ -427,16 +426,16 @@ class SimulationPlotterDash:
                     if arr.ndim == 0:
                         signal[i] = arr.item()
                     elif arr.ndim == 1:
-                        signal[i] = arr[signal_info.column]
+                        signal[i] = arr[signal_info.row]
                     else:
-                        signal[i] = arr[signal_info.column, signal_info.row]
+                        signal[i] = arr[signal_info.row, signal_info.column]
             else:
                 for i in range(steps):
                     signal[i] = signal_object_list[i]
 
             if signal_info.label == "":
                 label_name = (signal_info.signal_name
-                              + f"[{signal_info.column}, {signal_info.row}]")
+                              + f"[{signal_info.row}, {signal_info.column}]")
             else:
                 label_name = signal_info.label
 
