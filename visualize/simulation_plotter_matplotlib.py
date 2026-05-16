@@ -743,6 +743,11 @@ class SimulationPlotterMatplotlib:
             and calls its plot() method.
         """
 
+        # Skip plot display in headless / CI environments
+        if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+            print("Headless environment detected. Skipping plot display.")
+            return
+
         if dump_file_path is None:
             self.pre_plot(suptitle)
             plt.show()
