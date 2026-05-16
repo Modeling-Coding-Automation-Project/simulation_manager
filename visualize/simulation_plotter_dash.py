@@ -677,6 +677,11 @@ class SimulationPlotterDash:
             self._register_page_callbacks(
                 app, suffix=suffix)
 
+        # Skip server launch in headless / CI environments
+        if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+            print("Headless environment detected. Skipping Dash server launch.")
+            return
+
         print(f"Dash app running at http://127.0.0.1:{port}/")
         app.run(
             host=HOST_NAME,

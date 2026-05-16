@@ -1,0 +1,53 @@
+name: Run examples
+
+on:
+  push:
+    branches:
+    - develop
+
+jobs:
+  run_examples:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        define:
+        - ''
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Install dependencies
+      run: 'sudo apt update
+
+        sudo apt install -y build-essential
+
+        sudo apt install -y python3.12
+
+        sudo apt install -y python3.12-dev
+
+        sudo apt install -y python3.12-venv
+
+        '
+    - name: Set up Python environment
+      run: 'python3.12 -m venv /opt/venv_py_sim_manager
+
+        /opt/venv_py_sim_manager/bin/pip install --upgrade pip
+
+        /opt/venv_py_sim_manager/bin/pip install --upgrade setuptools
+
+        /opt/venv_py_sim_manager/bin/pip install numpy matplotlib mplcursors plotly dash scipy
+
+        '
+    - name: Run examples
+      env:
+        MPLBACKEND: Agg
+      run: '/opt/venv_py_sim_manager/bin/python3 ./example/signal_and_plot.py
+
+        /opt/venv_py_sim_manager/bin/python3 ./example/signal_and_plot_dash.py
+
+        /opt/venv_py_sim_manager/bin/python3 ./example/signal_and_plot_dash_tabs.py
+
+        '
