@@ -29,7 +29,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
-_RESULTS_FOLDER = Path(__file__).resolve().parents[1] / "results"
+_CACHE_FOLDER = Path(__file__).resolve().parents[1] / "cache"
 
 _LINE_STYLE_MAP = {
     "-": "solid",
@@ -560,8 +560,8 @@ class SimulationPlotterDash:
         """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         name = file_name.strip() if file_name and file_name.strip() else "result"
-        output_path = _RESULTS_FOLDER / f"{timestamp}_{name}.html"
-        _RESULTS_FOLDER.mkdir(parents=True, exist_ok=True)
+        output_path = _CACHE_FOLDER / f"{timestamp}_{name}.html"
+        _CACHE_FOLDER.mkdir(parents=True, exist_ok=True)
 
         pages = tab_figures if tab_figures else [
             {'label': name, 'figure': fig, 'shape': shape}
