@@ -23,10 +23,12 @@ SimulationPlotterDash クラスは、PythonのPlotly/Dashを使って、時間�
   - 例: plotter.assign("input_signal", position=(0, 0), row=0, column=0, x_sequence=time_array, label="入力")
 
 - プロットの表示
-  - plotter.plot("図のタイトル") で波形がプロットされます。
+  - plotter.plot("図のタイトル") で波形をHTMLファイルに保存し、自動でブラウザを開きます。
+  - （Dockerコンテナ内の場合は自動では開きません。）
+  - 保存先は `./cache/` フォルダです。ファイル名は `YYYYMMDD_HHMMSS_<タイトル>.html` 形式になります（タイトル未指定の場合は `result`）。
   - pre_plot を使うと、次から別のタブで波形を表示させることができます。
     - 最後にplot関数を実行する必要はあります。
-  - ターミナルにURLが表示されたら、ブラウザでそのURLを開きます。
+  - HTMLファイルはブラウザ単体で動作し、サーバーの起動は不要です。
 
   | 操作 | 機能 |
   | --- | --- |
@@ -35,6 +37,7 @@ SimulationPlotterDash クラスは、PythonのPlotly/Dashを使って、時間�
   | マウスホイール | 全てのプロットのX軸の拡大縮小 |
   | Shift + マウスホイール | 対象のプロットのY軸の拡大縮小 |
   | ダブルクリック | 拡大縮小をリセット |
+  | Dual cursor mode チェック | 2カーソル表示モードON/OFF（カーソル位置・差分をグラフ上に表示） |
 
 - ログ保存機能
   - plotterのクラスインスタンスを以下のように定義すると、
