@@ -2,33 +2,34 @@
 This module provides the SimulationPlotterDash class,
 which facilitates the collection, organization,
 and visualization of simulation signal data
-using Plotly and Dash for interactive web-based visualization.
+using Plotly for interactive web-based visualization.
 
 It implements the same interface as SimulationPlotter
-but replaces matplotlib with Plotly for charts and Dash for the UI,
+but replaces matplotlib with Plotly for charts,
 enabling interactive features such as zoom, pan,
-hover tooltips, and dual cursor mode in a web browser.
+hover tooltips, and dual cursor mode.
+Results are saved as standalone HTML files and opened in the default browser.
 
 Classes:
     SimulationPlotterDash:
         A class for managing and visualizing simulation signals
-        using Plotly and Dash.
+        using Plotly.
         It provides methods to append signals, assign them to subplots,
         and generate plots with customizable appearance and layout.
 """
 import os
+import json
 import pickle
 import inspect
+import webbrowser
 import numpy as np
+from pathlib import Path
 from datetime import datetime
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output, State, callback_context
 
-HOST_NAME = "0.0.0.0"
 DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
-_ASSETS_FOLDER = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), 'assets')
+_RESULTS_FOLDER = Path(__file__).resolve().parents[1] / "results"
 
 _LINE_STYLE_MAP = {
     "-": "solid",
@@ -545,300 +546,236 @@ class SimulationPlotterDash:
 
         return fig, shape
 
-    def _run_dash_app(self, fig, shape, port=8050, debug=False,
-                      tab_figures=None):
+    def _save_and_open_html(self, fig, shape, file_name="result",
+                            tab_figures=None):
         """
-        Launch the Dash application with the given Plotly figure(s).
-
-        When *tab_figures* is provided (a list of dicts with keys
-        'label', 'figure', 'shape'), the app renders each figure
-        inside a separate Dash tab.  When *tab_figures* is ``None``
-        the app shows a single figure (backward-compatible behaviour).
+        Save the plot as a standalone HTML file and open it in the browser.
 
         Args:
-            fig: The Plotly Figure object to display (single-tab mode).
-            shape: A (2,1) numpy array with [n_rows, n_cols].
-            port (int): Port number for the Dash server. Defaults to 8050.
-            debug (bool): Run Dash in debug mode. Defaults to False.
-            tab_figures (list[dict] | None): Optional list of figure
-                pages to display in tabs.
+            fig: The Plotly Figure object (used when tab_figures is None).
+            shape: A (2,1) numpy array with [n_rows, n_cols] (same).
+            file_name (str): Base name for the output file (no extension).
+            tab_figures (list[dict] | None): Pages to render; each dict has
+                keys 'label', 'figure', 'shape'.
         """
-        app = Dash(__name__, assets_folder=_ASSETS_FOLDER)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        name = file_name.strip() if file_name and file_name.strip() else "result"
+        output_path = _RESULTS_FOLDER / f"{timestamp}_{name}.html"
+        _RESULTS_FOLDER.mkdir(parents=True, exist_ok=True)
 
-        # ---- build pages list ------------------------------------------
-        if tab_figures and len(tab_figures) > 1:
-            pages = tab_figures
-        else:
-            # single figure – wrap for uniform handling
-            label = (tab_figures[0]['label']
-                     if tab_figures else "Plot")
-            pages = [{'label': label, 'figure': fig, 'shape': shape}]
+        pages = tab_figures if tab_figures else [
+            {'label': name, 'figure': fig, 'shape': shape}
+        ]
+        output_path.write_text(self._build_html(pages), encoding='utf-8')
+        print(f"HTML saved to: {output_path}")
 
-        use_tabs = len(pages) > 1
-
-        # ---- helper: build the content block for one page ---------------
-        def _page_content(page_info, idx):
-            graph_height = max(400, 300 * int(page_info['shape'][0, 0]))
-            suffix = f"-{idx}" if use_tabs else ""
-            return html.Div([
-                html.Div(
-                    style={
-                        'display': 'flex',
-                        'alignItems': 'center',
-                        'gap': '20px',
-                        'padding': '3px 12px',
-                        'backgroundColor': '#f5f5f5',
-                        'borderBottom': '1px solid #ddd',
-                    },
-                    children=[
-                        dcc.Checklist(
-                            id=f'dual-cursor-toggle{suffix}',
-                            options=[{'label': ' Dual cursor mode',
-                                      'value': 'on'}],
-                            value=[],
-                            style={'fontSize': '14px', 'lineHeight': '1'},
-                            inputStyle={'margin': '0',
-                                        'verticalAlign': 'middle'},
-                            labelStyle={
-                                'display': 'inline-flex',
-                                'alignItems': 'center',
-                                'gap': '4px',
-                                'margin': '0',
-                            },
-                        ),
-                        html.Div(
-                            id=f'cursor-controls{suffix}',
-                            children=[
-                                html.Span('Select cursor: ',
-                                          style={'fontSize': '13px'}),
-                                dcc.RadioItems(
-                                    id=f'cursor-select{suffix}',
-                                    options=[
-                                        {'label': ' Cursor 1 (red)',
-                                         'value': '1'},
-                                        {'label': ' Cursor 2 (blue)',
-                                         'value': '2'},
-                                    ],
-                                    value='1',
-                                    inline=True,
-                                    style={'fontSize': '13px'},
-                                ),
-                            ],
-                            style={'display': 'none'},
-                        ),
-                    ],
-                ),
-                dcc.Graph(
-                    id=f'main-graph{suffix}',
-                    figure=page_info['figure'],
-                    style={'height': f'{graph_height}px'},
-                    config={
-                        'scrollZoom': False,
-                        'displayModeBar': True,
-                    },
-                ),
-                dcc.Store(
-                    id=f'cursor-store{suffix}',
-                    data={'1': {}, '2': {}},
-                ),
-            ])
-
-        # ---- layout ----------------------------------------------------
-        if use_tabs:
-            tabs_children = []
-            for idx, page_info in enumerate(pages):
-                tabs_children.append(
-                    dcc.Tab(
-                        label=page_info['label'],
-                        children=[_page_content(page_info, idx)],
-                        style={'padding': '6px 16px'},
-                        selected_style={
-                            'padding': '6px 16px',
-                            'fontWeight': 'bold',
-                            'borderTop': '3px solid #1f77b4',
-                        },
-                    )
-                )
-            app.layout = html.Div([
-                dcc.Tabs(
-                    id='page-tabs',
-                    children=tabs_children,
-                    value=None,
-                ),
-            ])
-        else:
-            app.layout = html.Div([
-                _page_content(pages[0], 0),
-            ])
-
-        # ---- register callbacks for each page --------------------------
-        for idx in range(len(pages)):
-            suffix = f"-{idx}" if use_tabs else ""
-            self._register_page_callbacks(
-                app, suffix=suffix)
-
-        # Skip server launch in headless / CI environments
         if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
-            print("Headless environment detected. Skipping Dash server launch.")
+            print("Headless environment detected. Skipping browser launch.")
             return
 
-        print(f"Dash app running at http://127.0.0.1:{port}/")
-        app.run(
-            host=HOST_NAME,
-            port=port,
-            debug=debug)
+        if not webbrowser.open(output_path.as_uri()):
+            print(
+                f"Warning: Could not open browser. Open manually: {output_path}")
 
-    @staticmethod
-    def _register_page_callbacks(app, suffix=""):
-        """
-        Register dual-cursor callbacks for a single page.
+    def _build_html(self, pages):
+        """Build a complete standalone HTML string with embedded Plotly figure(s)."""
+        use_tabs = len(pages) > 1
+        pages_data = [json.loads(p['figure'].to_json()) for p in pages]
+        pages_json = json.dumps(pages_data)
 
-        Args:
-            app: The Dash application instance.
-            suffix (str): Suffix appended to component IDs to make
-                them unique across tabs (e.g., "-0", "-1").
-        """
+        if use_tabs:
+            btns = ''.join(
+                f'<button class="tab-btn" id="tab-btn-{i}" '
+                f'onclick="showTab({i})">{p["label"]}</button>'
+                for i, p in enumerate(pages)
+            )
+            tab_bar = f'<div class="tab-bar">{btns}</div>\n'
+        else:
+            tab_bar = ''
 
-        @app.callback(
-            Output(f'cursor-controls{suffix}', 'style'),
-            Input(f'dual-cursor-toggle{suffix}', 'value'),
+        page_divs = []
+        for i, pdata in enumerate(pages_data):
+            graph_h = (pdata.get('layout') or {}).get('height') or 400
+            hidden = ' style="display:none"' if i > 0 else ''
+            page_divs.append(
+                f'<div class="page" id="page-{i}"{hidden}>\n'
+                f'  <div class="controls">\n'
+                f'    <label><input type="checkbox" id="toggle-{i}">'
+                f' Dual cursor mode</label>\n'
+                f'    <div id="cc-{i}"'
+                f' style="display:none;align-items:center;gap:8px;">\n'
+                f'      <span style="font-size:13px">Select cursor: </span>\n'
+                f'      <label style="font-size:13px;display:inline-flex;'
+                f'align-items:center;gap:4px;"><input type="radio"'
+                f' name="cr-{i}" id="r1-{i}" value="1" checked>'
+                f' Cursor 1 (red)</label>\n'
+                f'      <label style="font-size:13px;display:inline-flex;'
+                f'align-items:center;gap:4px;"><input type="radio"'
+                f' name="cr-{i}" id="r2-{i}" value="2">'
+                f' Cursor 2 (blue)</label>\n'
+                f'    </div>\n'
+                f'  </div>\n'
+                f'  <div id="graph-{i}" style="height:{graph_h}px;"></div>\n'
+                f'</div>'
+            )
+        pages_html = '\n'.join(page_divs)
+
+        zoom_js_path = Path(__file__).parent / 'assets' / 'zoom_modifier.js'
+        try:
+            zoom_js = zoom_js_path.read_text(encoding='utf-8')
+        except Exception:
+            zoom_js = ''
+
+        init_tab = 'showTab(0);' if use_tabs else ''
+
+        script = (
+            '(function() {\n'
+            '  var pagesData = ' + pages_json + ';\n'
+            '\n'
+            '  function showTab(idx) {\n'
+            '    document.querySelectorAll(".page").forEach(function(p, i) {\n'
+            '      p.style.display = i === idx ? "block" : "none";\n'
+            '    });\n'
+            '    document.querySelectorAll(".tab-btn").forEach(function(b, i) {\n'
+            '      b.classList.toggle("active", i === idx);\n'
+            '    });\n'
+            '  }\n'
+            '\n'
+            '  pagesData.forEach(function(figData, idx) {\n'
+            '    var gd = document.getElementById("graph-" + idx);\n'
+            '    var origAnn = JSON.parse(\n'
+            '      JSON.stringify(figData.layout.annotations || []));\n'
+            '\n'
+            '    Plotly.newPlot(gd, figData.data, figData.layout,\n'
+            '      {scrollZoom: false, displayModeBar: true});\n'
+            '\n'
+            '    var dualMode = false, cursorSel = "1";\n'
+            '    var store = {"1": {}, "2": {}};\n'
+            '    var tog = document.getElementById("toggle-" + idx);\n'
+            '    var ctrl = document.getElementById("cc-" + idx);\n'
+            '    var r1 = document.getElementById("r1-" + idx);\n'
+            '    var r2 = document.getElementById("r2-" + idx);\n'
+            '\n'
+            '    tog.addEventListener("change", function() {\n'
+            '      dualMode = tog.checked;\n'
+            '      ctrl.style.display = dualMode ? "flex" : "none";\n'
+            '      if (!dualMode) {\n'
+            '        store = {"1": {}, "2": {}};\n'
+            '        Plotly.relayout(gd, {shapes: [], annotations: origAnn});\n'
+            '      }\n'
+            '    });\n'
+            '    r1.addEventListener("change",\n'
+            '      function() { if (r1.checked) cursorSel = "1"; });\n'
+            '    r2.addEventListener("change",\n'
+            '      function() { if (r2.checked) cursorSel = "2"; });\n'
+            '\n'
+            '    gd.on("plotly_click", function(ev) {\n'
+            '      if (!dualMode || !ev || !ev.points ||\n'
+            '          !ev.points.length) return;\n'
+            '      var pt = ev.points[0];\n'
+            '      var xv = pt.x;\n'
+            '      var tr = gd.data[pt.curveNumber];\n'
+            '      var xa = tr.xaxis || "x";\n'
+            '      var ya = tr.yaxis || "y";\n'
+            '      store[cursorSel][xa] = {x: xv, y: pt.y, ya: ya};\n'
+            '\n'
+            '      var shapes = JSON.parse(\n'
+            '        JSON.stringify(gd.layout.shapes || []));\n'
+            '      var sn = "cursor_" + cursorSel + "_" + xa;\n'
+            '      shapes = shapes.filter(\n'
+            '        function(s) { return s.name !== sn; });\n'
+            '      shapes.push({\n'
+            '        type: "line", x0: xv, x1: xv, y0: 0, y1: 1,\n'
+            '        xref: xa, yref: ya + " domain",\n'
+            '        line: {color: cursorSel === "1" ? "red" : "blue",\n'
+            '               width: 1.5, dash: "dash"},\n'
+            '        name: sn\n'
+            '      });\n'
+            '\n'
+            '      var axes = {};\n'
+            '      ["1","2"].forEach(function(k) {\n'
+            '        Object.keys(store[k]).forEach(\n'
+            '          function(ax) { axes[ax] = 1; });\n'
+            '      });\n'
+            '      var anns = origAnn.slice();\n'
+            '      Object.keys(axes).sort().forEach(function(ax) {\n'
+            '        var yAx = null;\n'
+            '        ["1","2"].forEach(function(k) {\n'
+            '          if (!yAx && store[k][ax]) yAx = store[k][ax].ya;\n'
+            '        });\n'
+            '        if (!yAx) return;\n'
+            '        var parts = [];\n'
+            '        [["1","C1","red"],["2","C2","blue"]].forEach(function(a) {\n'
+            '          var k=a[0], lb=a[1], cl=a[2];\n'
+            '          if (store[k][ax]) {\n'
+            '            var p = store[k][ax];\n'
+            '            var ys = p.y != null\n'
+            '              ? ", y=" + p.y.toFixed(4) : "";\n'
+            '            parts.push("<span style=\\"color:" + cl + "\\">" +\n'
+            '              lb + ": x=" + p.x.toFixed(4) + ys + "</span>");\n'
+            '          }\n'
+            '        });\n'
+            '        if (store["1"][ax] && store["2"][ax]) {\n'
+            '          var dx = Math.abs(\n'
+            '            store["2"][ax].x - store["1"][ax].x);\n'
+            '          parts.push("\u0394x=" + dx.toFixed(4));\n'
+            '        }\n'
+            '        if (parts.length) {\n'
+            '          anns.push({\n'
+            '            name: "cursor_info_" + ax,\n'
+            '            text: parts.join("<br>"),\n'
+            '            xref: ax + " domain", yref: yAx + " domain",\n'
+            '            x: 0.01, y: 0.99,\n'
+            '            xanchor: "left", yanchor: "top",\n'
+            '            showarrow: false,\n'
+            '            font: {size: 11, family: "monospace", color: "#333"},\n'
+            '            bgcolor: "rgba(255,251,230,0.9)",\n'
+            '            bordercolor: "#ccc", borderwidth: 1, borderpad: 4\n'
+            '          });\n'
+            '        }\n'
+            '      });\n'
+            '      Plotly.relayout(gd, {shapes: shapes, annotations: anns});\n'
+            '    });\n'
+            '  });\n'
+            '  ' + init_tab + '\n'
+            '})();\n'
         )
-        def toggle_cursor_controls(dual_mode_value):
-            if dual_mode_value and 'on' in dual_mode_value:
-                return {'display': 'flex', 'alignItems': 'center', 'gap': '8px'}
-            return {'display': 'none'}
 
-        @app.callback(
-            Output(f'main-graph{suffix}', 'figure'),
-            Output(f'cursor-store{suffix}', 'data'),
-            Input(f'main-graph{suffix}', 'clickData'),
-            Input(f'dual-cursor-toggle{suffix}', 'value'),
-            State(f'cursor-select{suffix}', 'value'),
-            State(f'cursor-store{suffix}', 'data'),
-            State(f'main-graph{suffix}', 'figure'),
-            prevent_initial_call=True,
+        css = (
+            '* { box-sizing: border-box; }\n'
+            'body { margin: 0; font-family: sans-serif; background: white; }\n'
+            '.tab-bar { display: flex; border-bottom: 1px solid #ddd;'
+            ' background: #f5f5f5; }\n'
+            '.tab-btn { padding: 6px 16px; cursor: pointer; border: none;'
+            ' border-top: 3px solid transparent;'
+            ' background: none; font-size: 14px; }\n'
+            '.tab-btn.active { font-weight: bold;'
+            ' border-top: 3px solid #1f77b4; background: white; }\n'
+            '.controls { display: flex; align-items: center; gap: 20px;'
+            ' padding: 3px 12px; background: #f5f5f5;'
+            ' border-bottom: 1px solid #ddd; font-size: 14px; }\n'
+            'label { display: inline-flex; align-items: center;'
+            ' gap: 4px; margin: 0; }\n'
         )
-        def update_cursors(click_data, dual_mode_value, cursor_select,
-                           store_data, fig_data):
-            triggered_id = callback_context.triggered_id
-            toggle_id = f'dual-cursor-toggle{suffix}'
-            dual_mode = bool(dual_mode_value and 'on' in dual_mode_value)
 
-            if triggered_id == toggle_id:
-                if not dual_mode:
-                    fig_data['layout']['shapes'] = []
-                    existing_ann = list(
-                        fig_data['layout'].get('annotations', []))
-                    fig_data['layout']['annotations'] = [
-                        a for a in existing_ann
-                        if not (a.get('name') or '').startswith(
-                            'cursor_info_')]
-                    store_data = {'1': {}, '2': {}}
-                    return fig_data, store_data
-                return fig_data, store_data
-
-            if not dual_mode or click_data is None:
-                return fig_data, store_data
-
-            point = click_data['points'][0]
-            x_clicked = point['x']
-
-            # Determine the axes from the clicked trace's curveNumber,
-            # because clickData does not always include xaxis/yaxis.
-            curve_num = point.get('curveNumber', 0)
-            trace_data = fig_data['data'][curve_num]
-            x_axis = trace_data.get('xaxis', 'x')
-            y_axis = trace_data.get('yaxis', 'y')
-
-            cursor_key = cursor_select
-            store_data[cursor_key][x_axis] = {
-                'x': x_clicked,
-                'y': point.get('y'),
-                'y_axis': y_axis,
-            }
-
-            shapes = list(fig_data['layout'].get('shapes', []))
-            shape_name = f'cursor_{cursor_key}_{x_axis}'
-            shapes = [
-                s for s in shapes
-                if s.get('name', '') != shape_name
-            ]
-
-            color = 'red' if cursor_key == '1' else 'blue'
-            shapes.append({
-                'type': 'line',
-                'x0': x_clicked,
-                'x1': x_clicked,
-                'y0': 0,
-                'y1': 1,
-                'xref': x_axis,
-                'yref': f'{y_axis} domain',
-                'line': {'color': color, 'width': 1.5, 'dash': 'dash'},
-                'name': shape_name,
-            })
-
-            fig_data['layout']['shapes'] = shapes
-
-            # Build per-subplot cursor info annotations
-            existing_ann = list(
-                fig_data['layout'].get('annotations', []))
-            preserved_ann = [
-                a for a in existing_ann
-                if not (a.get('name') or '').startswith('cursor_info_')]
-
-            all_x_axes = set()
-            for ckey in ['1', '2']:
-                all_x_axes.update(store_data[ckey].keys())
-
-            for ax_name in sorted(all_x_axes):
-                y_ax = None
-                for ckey in ['1', '2']:
-                    if ax_name in store_data[ckey]:
-                        y_ax = store_data[ckey][ax_name].get('y_axis')
-                        if y_ax:
-                            break
-                if y_ax is None:
-                    continue
-
-                text_parts = []
-                for ckey, label, clr in [('1', 'C1', 'red'),
-                                         ('2', 'C2', 'blue')]:
-                    if ax_name in store_data[ckey]:
-                        pos = store_data[ckey][ax_name]
-                        y_val = pos.get('y')
-                        y_str = (f", y={y_val:.4f}"
-                                 if y_val is not None else "")
-                        text_parts.append(
-                            f'<span style="color:{clr}">'
-                            f'{label}: x={pos["x"]:.4f}{y_str}</span>')
-                if (ax_name in store_data['1']
-                        and ax_name in store_data['2']):
-                    dx = abs(store_data['2'][ax_name]['x']
-                             - store_data['1'][ax_name]['x'])
-                    text_parts.append(f'\u0394x={dx:.4f}')
-
-                if text_parts:
-                    preserved_ann.append({
-                        'name': f'cursor_info_{ax_name}',
-                        'text': '<br>'.join(text_parts),
-                        'xref': f'{ax_name} domain',
-                        'yref': f'{y_ax} domain',
-                        'x': 0.01,
-                        'y': 0.99,
-                        'xanchor': 'left',
-                        'yanchor': 'top',
-                        'showarrow': False,
-                        'font': {'size': 11, 'family': 'monospace',
-                                 'color': '#333'},
-                        'bgcolor': 'rgba(255,251,230,0.9)',
-                        'bordercolor': '#ccc',
-                        'borderwidth': 1,
-                        'borderpad': 4,
-                    })
-
-            fig_data['layout']['annotations'] = preserved_ann
-
-            return fig_data, store_data
+        return (
+            '<!DOCTYPE html>\n'
+            '<html>\n'
+            '<head>\n'
+            '  <meta charset="utf-8">\n'
+            '  <title>Simulation Results</title>\n'
+            '  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js">'
+            '</script>\n'
+            '  <style>\n' + css + '  </style>\n'
+            '</head>\n'
+            '<body>\n'
+            + ('  ' + tab_bar if tab_bar else '')
+            + pages_html + '\n'
+            '  <script>\n' + script + '  </script>\n'
+            + ('  <script>\n' + zoom_js + '\n  </script>\n' if zoom_js else '')
+            + '</body>\n'
+            '</html>\n'
+        )
 
     def plot(self, suptitle="", dump_file_path=None, port=8050, debug=False):
         """
@@ -882,8 +819,8 @@ class SimulationPlotterDash:
             fig = all_pages[0]['figure']
             shape = all_pages[0]['shape']
 
-            self._run_dash_app(fig, shape, port=port, debug=debug,
-                               tab_figures=all_pages)
+            self._save_and_open_html(fig, shape, file_name=suptitle,
+                                     tab_figures=all_pages)
             return
 
         path = dump_file_path
