@@ -28,8 +28,8 @@ from datetime import datetime
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
 _CACHE_FOLDER = Path.cwd() / "cache"
+DUMP_FOLDER_PATH = _CACHE_FOLDER / "simulation_plotter_dumps"
 
 _LINE_STYLE_MAP = {
     "-": "solid",
