@@ -29,7 +29,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 DUMP_FOLDER_PATH = "./cache/simulation_plotter_dumps/"
-_CACHE_FOLDER = Path(__file__).resolve().parents[1] / "cache"
+_CACHE_FOLDER = Path.cwd() / "cache"
 
 _LINE_STYLE_MAP = {
     "-": "solid",
